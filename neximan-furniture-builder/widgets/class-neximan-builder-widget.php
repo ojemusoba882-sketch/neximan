@@ -110,6 +110,7 @@ class Builder_Widget extends Widget_Base {
 		$this->register_layout_controls();
 		$this->register_module_controls();
 		$this->register_color_controls();
+		$this->register_options_controls();
 		$this->register_woocommerce_controls();
 		$this->register_style_controls();
 	}
@@ -425,6 +426,7 @@ class Builder_Widget extends Widget_Base {
 					'sofa'   => __( 'Sofa', 'neximan-builder' ),
 					'table'  => __( 'Table', 'neximan-builder' ),
 					'bed'    => __( 'Bed', 'neximan-builder' ),
+					'chair'  => __( 'Chair', 'neximan-builder' ),
 					'custom' => __( 'Custom', 'neximan-builder' ),
 				),
 			)
@@ -560,6 +562,87 @@ class Builder_Widget extends Widget_Base {
 	}
 
 	/**
+	 * Inline option groups (e.g. Size 75/90 cm). One group in inline mode; use
+	 * Builder Posts for unlimited groups.
+	 *
+	 * @return void
+	 */
+	private function register_options_controls() {
+		$this->start_controls_section(
+			'section_options',
+			array(
+				'label'     => __( 'Size / Options', 'neximan-builder' ),
+				'tab'       => Controls_Manager::TAB_CONTENT,
+				'condition' => array( 'data_source' => 'inline' ),
+			)
+		);
+
+		$this->add_control(
+			'size_group_label',
+			array(
+				'label'   => __( 'Group Label', 'neximan-builder' ),
+				'type'    => Controls_Manager::TEXT,
+				'default' => __( 'سایز', 'neximan-builder' ),
+			)
+		);
+
+		$repeater = new Repeater();
+
+		$repeater->add_control(
+			'choice_name',
+			array(
+				'label'       => __( 'Choice', 'neximan-builder' ),
+				'type'        => Controls_Manager::TEXT,
+				'label_block' => true,
+			)
+		);
+
+		$repeater->add_control(
+			'choice_price',
+			array(
+				'label'   => __( 'Price Modifier', 'neximan-builder' ),
+				'type'    => Controls_Manager::NUMBER,
+				'default' => 0,
+				'min'     => 0,
+				'step'    => 1,
+			)
+		);
+
+		$repeater->add_control(
+			'choice_var',
+			array(
+				'label'       => __( 'Variation Value', 'neximan-builder' ),
+				'type'        => Controls_Manager::TEXT,
+				'description' => __( 'Optional. The WooCommerce attribute value (slug) for variation matching.', 'neximan-builder' ),
+			)
+		);
+
+		$this->add_control(
+			'sizes',
+			array(
+				'type'        => Controls_Manager::REPEATER,
+				'fields'      => $repeater->get_controls(),
+				'title_field' => '{{{ choice_name }}}',
+				'default'     => array(
+					array( 'choice_name' => __( '۷۵ سانت', 'neximan-builder' ) ),
+					array( 'choice_name' => __( '۹۰ سانت', 'neximan-builder' ) ),
+				),
+			)
+		);
+
+		$this->add_control(
+			'size_var_attr',
+			array(
+				'label'       => __( 'Variation Attribute (size)', 'neximan-builder' ),
+				'type'        => Controls_Manager::TEXT,
+				'description' => __( 'Optional. WooCommerce attribute name, e.g. pa_size. Used when Price Mode is Variation.', 'neximan-builder' ),
+			)
+		);
+
+		$this->end_controls_section();
+	}
+
+	/**
 	 * WooCommerce integration controls.
 	 *
 	 * @return void
@@ -606,12 +689,39 @@ class Builder_Widget extends Widget_Base {
 				'default'     => 'dynamic',
 				'description' => __( 'Used for the inline data source. Builder Posts define their own price mode.', 'neximan-builder' ),
 				'options'     => array(
-					'dynamic' => __( 'Dynamic (builder price)', 'neximan-builder' ),
-					'product' => __( 'WooCommerce product price', 'neximan-builder' ),
+					'dynamic'   => __( 'Dynamic (builder price)', 'neximan-builder' ),
+					'product'   => __( 'WooCommerce product price', 'neximan-builder' ),
+					'variation' => __( 'WooCommerce variation price', 'neximan-builder' ),
 				),
 				'condition'   => array(
 					'woo_action!'  => 'none',
 					'data_source'  => 'inline',
+				),
+			)
+		);
+
+		$this->add_control(
+			'var_attr_layout',
+			array(
+				'label'       => __( 'Variation Attribute (layout)', 'neximan-builder' ),
+				'type'        => Controls_Manager::TEXT,
+				'description' => __( 'Optional. WooCommerce attribute name for layouts, e.g. pa_chideman.', 'neximan-builder' ),
+				'condition'   => array(
+					'data_source'    => 'inline',
+					'woo_price_mode' => 'variation',
+				),
+			)
+		);
+
+		$this->add_control(
+			'var_attr_color',
+			array(
+				'label'       => __( 'Variation Attribute (color)', 'neximan-builder' ),
+				'type'        => Controls_Manager::TEXT,
+				'description' => __( 'Optional. WooCommerce attribute name for colors, e.g. pa_color.', 'neximan-builder' ),
+				'condition'   => array(
+					'data_source'    => 'inline',
+					'woo_price_mode' => 'variation',
 				),
 			)
 		);
@@ -762,10 +872,37 @@ class Builder_Widget extends Widget_Base {
 		if ( ! empty( $settings['colors'] ) && is_array( $settings['colors'] ) ) {
 			foreach ( $settings['colors'] as $cindex => $color ) {
 				$colors[] = array(
-					'id'    => 'c' . $cindex,
-					'name'  => isset( $color['color_name'] ) ? $color['color_name'] : '',
-					'value' => isset( $color['color_value'] ) ? $color['color_value'] : '#cccccc',
-					'price' => isset( $color['color_price'] ) ? (float) $color['color_price'] : 0,
+					'id'       => 'c' . $cindex,
+					'name'     => isset( $color['color_name'] ) ? $color['color_name'] : '',
+					'value'    => isset( $color['color_value'] ) ? $color['color_value'] : '#cccccc',
+					'price'    => isset( $color['color_price'] ) ? (float) $color['color_price'] : 0,
+					'varValue' => '',
+				);
+			}
+		}
+
+		// Option groups (inline: a single "size" group).
+		$options = array();
+		if ( ! empty( $settings['sizes'] ) && is_array( $settings['sizes'] ) ) {
+			$choices = array();
+			foreach ( $settings['sizes'] as $sindex => $size ) {
+				if ( empty( $size['choice_name'] ) ) {
+					continue;
+				}
+				$choices[] = array(
+					'id'       => 'o' . $sindex,
+					'name'     => $size['choice_name'],
+					'price'    => isset( $size['choice_price'] ) ? (float) $size['choice_price'] : 0,
+					'varValue' => isset( $size['choice_var'] ) ? $size['choice_var'] : '',
+				);
+			}
+
+			if ( ! empty( $choices ) ) {
+				$options[] = array(
+					'id'      => 'gsize',
+					'label'   => isset( $settings['size_group_label'] ) ? $settings['size_group_label'] : '',
+					'varAttr' => isset( $settings['size_var_attr'] ) ? $settings['size_var_attr'] : '',
+					'choices' => $choices,
 				);
 			}
 		}
@@ -776,8 +913,13 @@ class Builder_Widget extends Widget_Base {
 			'name'      => '',
 			'wooId'     => isset( $settings['woo_fallback_product'] ) ? (int) $settings['woo_fallback_product'] : 0,
 			'priceMode' => isset( $settings['woo_price_mode'] ) ? $settings['woo_price_mode'] : 'dynamic',
+			'varAttrs'  => array(
+				'layout' => isset( $settings['var_attr_layout'] ) ? $settings['var_attr_layout'] : '',
+				'color'  => isset( $settings['var_attr_color'] ) ? $settings['var_attr_color'] : '',
+			),
 			'models'    => $models,
 			'colors'    => $colors,
+			'options'   => $options,
 		);
 	}
 
@@ -850,13 +992,21 @@ class Builder_Widget extends Widget_Base {
 			}
 			return;
 		}
+
+		// Build the signed pricing manifest. The cart price is recomputed from
+		// this manifest server-side; signing the exact JSON string lets the
+		// client echo it back without serialization mismatches.
+		$manifest      = Config::build_manifest( $config['series'], $config['woo'] );
+		$manifest_json = wp_json_encode( $manifest );
+		$signature     = Config::sign_json( $manifest_json );
 		?>
 		<div id="<?php echo esc_attr( $uid ); ?>"
 			class="neximan-builder"
 			data-neximan-builder="<?php echo esc_attr( $uid ); ?>"
 			data-source="<?php echo esc_attr( $config['source'] ); ?>"
 			data-post-id="<?php echo esc_attr( $post_id ); ?>"
-			data-widget-id="<?php echo esc_attr( $this->get_id() ); ?>">
+			data-widget-id="<?php echo esc_attr( $this->get_id() ); ?>"
+			data-sig="<?php echo esc_attr( $signature ); ?>">
 			<div class="neximan-builder-inner">
 
 				<div class="neximan-series-tabs"></div>
@@ -894,6 +1044,8 @@ class Builder_Widget extends Widget_Base {
 							<div class="neximan-layout-options"></div>
 						</div>
 
+						<div class="neximan-options"></div>
+
 						<div class="neximan-control-section">
 							<label class="neximan-control-label"><?php echo esc_html( $settings['color_section_label'] ); ?></label>
 							<div class="neximan-color-options"></div>
@@ -916,9 +1068,8 @@ class Builder_Widget extends Widget_Base {
 				</div>
 			</div>
 
-			<script type="application/json" class="neximan-config">
-				<?php echo wp_json_encode( $config ); ?>
-			</script>
+			<script type="application/json" class="neximan-config"><?php echo wp_json_encode( $config ); ?></script>
+			<script type="application/json" class="neximan-manifest"><?php echo $manifest_json; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- JSON, signed and consumed verbatim. ?></script>
 		</div>
 		<?php
 	}

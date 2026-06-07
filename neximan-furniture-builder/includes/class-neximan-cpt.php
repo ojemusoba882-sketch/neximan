@@ -171,13 +171,30 @@ class CPT {
 					<select id="neximan-price-mode">
 						<option value="dynamic" <?php selected( isset( $config['priceMode'] ) ? $config['priceMode'] : 'dynamic', 'dynamic' ); ?>><?php esc_html_e( 'Dynamic (builder price)', 'neximan-builder' ); ?></option>
 						<option value="product" <?php selected( isset( $config['priceMode'] ) ? $config['priceMode'] : 'dynamic', 'product' ); ?>><?php esc_html_e( 'WooCommerce product price', 'neximan-builder' ); ?></option>
+						<option value="variation" <?php selected( isset( $config['priceMode'] ) ? $config['priceMode'] : 'dynamic', 'variation' ); ?>><?php esc_html_e( 'WooCommerce variation price', 'neximan-builder' ); ?></option>
 					</select>
+				</label>
+			</div>
+
+			<div class="neximan-admin-row">
+				<label>
+					<strong><?php esc_html_e( 'Variation Attribute: Layout', 'neximan-builder' ); ?></strong>
+					<input type="text" id="neximan-var-layout" placeholder="pa_chideman" value="<?php echo esc_attr( isset( $config['varAttrs']['layout'] ) ? $config['varAttrs']['layout'] : '' ); ?>" />
+				</label>
+				<label>
+					<strong><?php esc_html_e( 'Variation Attribute: Color', 'neximan-builder' ); ?></strong>
+					<input type="text" id="neximan-var-color" placeholder="pa_color" value="<?php echo esc_attr( isset( $config['varAttrs']['color'] ) ? $config['varAttrs']['color'] : '' ); ?>" />
 				</label>
 			</div>
 
 			<h3><?php esc_html_e( 'Fabric Colors', 'neximan-builder' ); ?></h3>
 			<div id="neximan-colors" class="neximan-list"></div>
 			<button type="button" class="button" id="neximan-add-color"><?php esc_html_e( '+ Add Color', 'neximan-builder' ); ?></button>
+
+			<h3><?php esc_html_e( 'Option Groups (Size, etc.)', 'neximan-builder' ); ?></h3>
+			<p class="description"><?php esc_html_e( 'Add as many option groups as you need (e.g. Size 75/90 cm, leg type, ...). Each choice can change the price and map to a WooCommerce variation value.', 'neximan-builder' ); ?></p>
+			<div id="neximan-options" class="neximan-list"></div>
+			<button type="button" class="button" id="neximan-add-option"><?php esc_html_e( '+ Add Option Group', 'neximan-builder' ); ?></button>
 
 			<h3><?php esc_html_e( 'Models', 'neximan-builder' ); ?></h3>
 			<div id="neximan-models" class="neximan-list"></div>

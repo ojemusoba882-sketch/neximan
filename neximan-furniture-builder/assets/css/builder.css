@@ -251,6 +251,34 @@
 	display: none;
 }
 
+/* Option buttons (size, etc.) */
+.neximan-option-choices {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+}
+
+.neximan-option-btn {
+	padding: 0.7rem 1.2rem;
+	background: var(--nx-light);
+	border: 2px solid transparent;
+	border-radius: 8px;
+	cursor: pointer;
+	font-size: 0.9rem;
+	font-weight: 600;
+	color: var(--nx-text);
+	transition: all 0.2s ease;
+}
+
+.neximan-option-btn:hover {
+	background: var(--nx-secondary);
+}
+
+.neximan-option-btn.is-active {
+	background: var(--nx-accent);
+	color: #fff;
+}
+
 /* Color swatches */
 .neximan-color-options {
 	display: grid;

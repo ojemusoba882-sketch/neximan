@@ -1,10 +1,11 @@
 <?php
 /**
- * Config model: stores, sanitizes and normalizes builder series data.
+ * Config model: stores, sanitizes and normalizes builder series data, builds
+ * the signed pricing manifest and computes prices server-side.
  *
  * A "series" (e.g. Noah / Melorin) is stored as a CPT post with its full
- * configuration (models -> layouts -> colors) kept as JSON post meta. This
- * gives unlimited nesting/flexibility that Elementor repeaters cannot provide.
+ * configuration (models -> layouts, colors, option groups) kept as JSON post
+ * meta. This gives unlimited nesting/flexibility.
  *
  * @package Neximan_Furniture_Builder
  */
@@ -51,7 +52,7 @@ class Config {
 			return self::defaults();
 		}
 
-		return $data;
+		return wp_parse_args( $data, self::defaults() );
 	}
 
 	/**
@@ -63,8 +64,13 @@ class Config {
 		return array(
 			'wooProductId' => 0,
 			'priceMode'    => 'dynamic',
+			'varAttrs'     => array(
+				'layout' => '',
+				'color'  => '',
+			),
 			'models'       => array(),
 			'colors'       => array(),
+			'options'      => array(),
 		);
 	}
 
@@ -82,17 +88,48 @@ class Config {
 		}
 
 		$clean['wooProductId'] = isset( $raw['wooProductId'] ) ? absint( $raw['wooProductId'] ) : 0;
-		$clean['priceMode']    = ( isset( $raw['priceMode'] ) && 'product' === $raw['priceMode'] ) ? 'product' : 'dynamic';
+		$clean['priceMode']    = self::clean_price_mode( isset( $raw['priceMode'] ) ? $raw['priceMode'] : 'dynamic' );
+
+		$clean['varAttrs'] = array(
+			'layout' => isset( $raw['varAttrs']['layout'] ) ? self::clean_attr_key( $raw['varAttrs']['layout'] ) : '',
+			'color'  => isset( $raw['varAttrs']['color'] ) ? self::clean_attr_key( $raw['varAttrs']['color'] ) : '',
+		);
 
 		// Colors.
 		if ( ! empty( $raw['colors'] ) && is_array( $raw['colors'] ) ) {
 			foreach ( $raw['colors'] as $i => $color ) {
 				$clean['colors'][] = array(
-					'id'    => self::clean_id( isset( $color['id'] ) ? $color['id'] : 'c' . $i ),
-					'name'  => sanitize_text_field( isset( $color['name'] ) ? $color['name'] : '' ),
-					'value' => self::clean_color( isset( $color['value'] ) ? $color['value'] : '#cccccc' ),
-					'price' => isset( $color['price'] ) ? (float) $color['price'] : 0,
+					'id'       => self::clean_id( isset( $color['id'] ) ? $color['id'] : 'c' . $i ),
+					'name'     => sanitize_text_field( isset( $color['name'] ) ? $color['name'] : '' ),
+					'value'    => self::clean_color( isset( $color['value'] ) ? $color['value'] : '#cccccc' ),
+					'price'    => isset( $color['price'] ) ? (float) $color['price'] : 0,
+					'varValue' => isset( $color['varValue'] ) ? sanitize_text_field( $color['varValue'] ) : '',
 				);
+			}
+		}
+
+		// Option groups (e.g. Size).
+		if ( ! empty( $raw['options'] ) && is_array( $raw['options'] ) ) {
+			foreach ( $raw['options'] as $gi => $group ) {
+				$clean_group = array(
+					'id'      => self::clean_id( isset( $group['id'] ) ? $group['id'] : 'g' . $gi ),
+					'label'   => sanitize_text_field( isset( $group['label'] ) ? $group['label'] : '' ),
+					'varAttr' => isset( $group['varAttr'] ) ? self::clean_attr_key( $group['varAttr'] ) : '',
+					'choices' => array(),
+				);
+
+				if ( ! empty( $group['choices'] ) && is_array( $group['choices'] ) ) {
+					foreach ( $group['choices'] as $ci => $choice ) {
+						$clean_group['choices'][] = array(
+							'id'       => self::clean_id( isset( $choice['id'] ) ? $choice['id'] : 'o' . $ci ),
+							'name'     => sanitize_text_field( isset( $choice['name'] ) ? $choice['name'] : '' ),
+							'price'    => isset( $choice['price'] ) ? (float) $choice['price'] : 0,
+							'varValue' => isset( $choice['varValue'] ) ? sanitize_text_field( $choice['varValue'] ) : '',
+						);
+					}
+				}
+
+				$clean['options'][] = $clean_group;
 			}
 		}
 
@@ -111,11 +148,12 @@ class Config {
 				if ( ! empty( $model['layouts'] ) && is_array( $model['layouts'] ) ) {
 					foreach ( $model['layouts'] as $li => $layout ) {
 						$clean_model['layouts'][] = array(
-							'id'      => self::clean_id( isset( $layout['id'] ) ? $layout['id'] : 'l' . $li ),
-							'label'   => sanitize_text_field( isset( $layout['label'] ) ? $layout['label'] : '' ),
-							'image'   => isset( $layout['image'] ) ? esc_url_raw( $layout['image'] ) : '',
-							'imageId' => isset( $layout['imageId'] ) ? absint( $layout['imageId'] ) : 0,
-							'price'   => isset( $layout['price'] ) ? (float) $layout['price'] : 0,
+							'id'       => self::clean_id( isset( $layout['id'] ) ? $layout['id'] : 'l' . $li ),
+							'label'    => sanitize_text_field( isset( $layout['label'] ) ? $layout['label'] : '' ),
+							'image'    => isset( $layout['image'] ) ? esc_url_raw( $layout['image'] ) : '',
+							'imageId'  => isset( $layout['imageId'] ) ? absint( $layout['imageId'] ) : 0,
+							'price'    => isset( $layout['price'] ) ? (float) $layout['price'] : 0,
+							'varValue' => isset( $layout['varValue'] ) ? sanitize_text_field( $layout['varValue'] ) : '',
 						);
 					}
 				}
@@ -128,7 +166,7 @@ class Config {
 	}
 
 	/**
-	 * Returns a normalized "series" array (for front-end + price calc) from a post.
+	 * Returns a normalized "series" array (for front-end) from a post.
 	 *
 	 * @param int $post_id Series post ID.
 	 * @return array|null
@@ -142,93 +180,235 @@ class Config {
 		$raw = self::get_raw( $post_id );
 
 		return array(
-			'id'     => 'post-' . $post_id,
-			'postId' => (int) $post_id,
-			'name'   => get_the_title( $post_id ),
-			'wooId'  => isset( $raw['wooProductId'] ) ? (int) $raw['wooProductId'] : 0,
-			'models' => isset( $raw['models'] ) ? $raw['models'] : array(),
-			'colors' => isset( $raw['colors'] ) ? $raw['colors'] : array(),
+			'id'        => 'post-' . $post_id,
+			'postId'    => (int) $post_id,
+			'name'      => get_the_title( $post_id ),
+			'wooId'     => (int) $raw['wooProductId'],
+			'priceMode' => $raw['priceMode'],
+			'varAttrs'  => $raw['varAttrs'],
+			'models'    => $raw['models'],
+			'colors'    => $raw['colors'],
+			'options'   => $raw['options'],
 		);
 	}
 
+	/* --------------------------------------------------------------------- *
+	 * Pricing manifest (signed) — the single source of truth for the cart.
+	 * --------------------------------------------------------------------- */
+
 	/**
-	 * Computes the price and resolves selection labels for a post-based series.
+	 * Builds a compact pricing manifest from a list of normalized series.
 	 *
-	 * @param int    $post_id   Series post ID.
-	 * @param string $model_id  Selected model id.
-	 * @param string $layout_id Selected layout id.
-	 * @param string $color_id  Selected color id.
-	 * @return array|null Resolved selection details, or null when invalid.
+	 * @param array $series_list List of series arrays.
+	 * @param array $woo         Widget WooCommerce meta (action, fallbackProduct).
+	 * @return array
 	 */
-	public static function resolve_selection( $post_id, $model_id, $layout_id, $color_id ) {
-		$series = self::get_series( $post_id );
-		if ( null === $series ) {
-			return null;
+	public static function build_manifest( $series_list, $woo ) {
+		$manifest = array(
+			'woo'    => array(
+				'fallbackProduct' => isset( $woo['fallbackProduct'] ) ? (int) $woo['fallbackProduct'] : 0,
+			),
+			'series' => array(),
+		);
+
+		foreach ( $series_list as $series ) {
+			$sid    = $series['id'];
+			$models = array();
+
+			foreach ( $series['models'] as $model ) {
+				$layouts = array();
+				foreach ( $model['layouts'] as $layout ) {
+					$layouts[ $layout['id'] ] = array(
+						'label'    => $layout['label'],
+						'price'    => (float) $layout['price'],
+						'varValue' => isset( $layout['varValue'] ) ? $layout['varValue'] : '',
+					);
+				}
+
+				$models[ $model['id'] ] = array(
+					'name'      => $model['name'],
+					'type'      => isset( $model['type'] ) ? $model['type'] : 'custom',
+					'basePrice' => (float) $model['basePrice'],
+					'wooId'     => isset( $model['wooId'] ) ? (int) $model['wooId'] : 0,
+					'layouts'   => $layouts,
+				);
+			}
+
+			$colors = array();
+			foreach ( $series['colors'] as $color ) {
+				$colors[ $color['id'] ] = array(
+					'name'     => $color['name'],
+					'price'    => (float) $color['price'],
+					'varValue' => isset( $color['varValue'] ) ? $color['varValue'] : '',
+				);
+			}
+
+			$options = array();
+			foreach ( ( isset( $series['options'] ) ? $series['options'] : array() ) as $group ) {
+				$choices = array();
+				foreach ( $group['choices'] as $choice ) {
+					$choices[ $choice['id'] ] = array(
+						'name'     => $choice['name'],
+						'price'    => (float) $choice['price'],
+						'varValue' => isset( $choice['varValue'] ) ? $choice['varValue'] : '',
+					);
+				}
+				$options[ $group['id'] ] = array(
+					'label'   => $group['label'],
+					'varAttr' => isset( $group['varAttr'] ) ? $group['varAttr'] : '',
+					'choices' => $choices,
+				);
+			}
+
+			$manifest['series'][ $sid ] = array(
+				'name'      => $series['name'],
+				'wooId'     => (int) $series['wooId'],
+				'priceMode' => isset( $series['priceMode'] ) ? $series['priceMode'] : 'dynamic',
+				'varAttrs'  => isset( $series['varAttrs'] ) ? $series['varAttrs'] : array(),
+				'models'    => $models,
+				'colors'    => $colors,
+				'options'   => $options,
+			);
 		}
 
-		$raw        = self::get_raw( $post_id );
-		$price_mode = isset( $raw['priceMode'] ) ? $raw['priceMode'] : 'dynamic';
-
-		return self::resolve_from_series( $series, $price_mode, $model_id, $layout_id, $color_id );
+		return $manifest;
 	}
 
 	/**
-	 * Computes the price and resolves labels for a normalized series array.
+	 * Signs the exact manifest JSON string with a site-secret-derived hash.
 	 *
-	 * Shared by both the post (CPT) and inline (Elementor) data sources.
+	 * Signing the raw string (rather than a re-encoded array) guarantees the
+	 * client can echo the manifest back byte-for-byte without serialization
+	 * differences breaking the signature.
 	 *
-	 * @param array  $series     Normalized series array.
-	 * @param string $price_mode 'dynamic' or 'product'.
+	 * @param string $manifest_json Manifest JSON string.
+	 * @return string Signature.
+	 */
+	public static function sign_json( $manifest_json ) {
+		return wp_hash( (string) $manifest_json );
+	}
+
+	/**
+	 * Verifies a manifest JSON string against a signature.
+	 *
+	 * @param string $manifest_json Raw manifest JSON (as received).
+	 * @param string $signature     Provided signature.
+	 * @return array|null Decoded manifest on success, null on failure.
+	 */
+	public static function verify( $manifest_json, $signature ) {
+		if ( ! is_string( $manifest_json ) || '' === $manifest_json ) {
+			return null;
+		}
+
+		if ( ! hash_equals( self::sign_json( $manifest_json ), (string) $signature ) ) {
+			return null;
+		}
+
+		$manifest = json_decode( $manifest_json, true );
+
+		return is_array( $manifest ) ? $manifest : null;
+	}
+
+	/**
+	 * Computes price, labels and variation attributes from a verified manifest.
+	 *
+	 * @param array  $manifest   Verified manifest.
+	 * @param string $series_id  Selected series id.
 	 * @param string $model_id   Selected model id.
 	 * @param string $layout_id  Selected layout id.
 	 * @param string $color_id   Selected color id.
+	 * @param array  $option_sel Map of groupId => choiceId.
 	 * @return array|null
 	 */
-	public static function resolve_from_series( $series, $price_mode, $model_id, $layout_id, $color_id ) {
-		if ( empty( $series['models'] ) ) {
+	public static function compute_from_manifest( $manifest, $series_id, $model_id, $layout_id, $color_id, $option_sel ) {
+		if ( empty( $manifest['series'][ $series_id ] ) ) {
 			return null;
 		}
 
-		$model = self::find_by_id( $series['models'], $model_id );
-		if ( null === $model ) {
+		$series = $manifest['series'][ $series_id ];
+
+		if ( empty( $series['models'][ $model_id ] ) ) {
 			return null;
 		}
 
-		$price        = (float) $model['basePrice'];
+		$model    = $series['models'][ $model_id ];
+		$price    = (float) $model['basePrice'];
+		$var_attr = array();
+
+		// Layout.
 		$layout_label = '';
-		$color_name   = '';
+		if ( ! empty( $series['models'][ $model_id ]['layouts'][ $layout_id ] ) ) {
+			$layout        = $series['models'][ $model_id ]['layouts'][ $layout_id ];
+			$price        += (float) $layout['price'];
+			$layout_label  = $layout['label'];
 
-		$layout = self::find_by_id( isset( $model['layouts'] ) ? $model['layouts'] : array(), $layout_id );
-		if ( null !== $layout ) {
-			$price       += (float) $layout['price'];
-			$layout_label = $layout['label'];
+			if ( ! empty( $series['varAttrs']['layout'] ) && '' !== $layout['varValue'] ) {
+				$var_attr[ 'attribute_' . $series['varAttrs']['layout'] ] = $layout['varValue'];
+			}
 		}
 
-		$color = self::find_by_id( isset( $series['colors'] ) ? $series['colors'] : array(), $color_id );
-		if ( null !== $color ) {
-			$price     += (float) $color['price'];
-			$color_name = $color['name'];
+		// Color.
+		$color_name = '';
+		if ( ! empty( $series['colors'][ $color_id ] ) ) {
+			$color       = $series['colors'][ $color_id ];
+			$price      += (float) $color['price'];
+			$color_name  = $color['name'];
+
+			if ( ! empty( $series['varAttrs']['color'] ) && '' !== $color['varValue'] ) {
+				$var_attr[ 'attribute_' . $series['varAttrs']['color'] ] = $color['varValue'];
+			}
 		}
 
-		$product_id = ! empty( $model['wooId'] ) ? (int) $model['wooId'] : (int) ( isset( $series['wooId'] ) ? $series['wooId'] : 0 );
+		// Option groups (e.g. size).
+		$option_labels = array();
+		if ( is_array( $option_sel ) ) {
+			foreach ( $option_sel as $group_id => $choice_id ) {
+				if ( empty( $series['options'][ $group_id ]['choices'][ $choice_id ] ) ) {
+					continue;
+				}
+				$group  = $series['options'][ $group_id ];
+				$choice = $group['choices'][ $choice_id ];
+				$price += (float) $choice['price'];
+
+				$option_labels[] = array(
+					'label' => $group['label'],
+					'value' => $choice['name'],
+				);
+
+				if ( ! empty( $group['varAttr'] ) && '' !== $choice['varValue'] ) {
+					$var_attr[ 'attribute_' . $group['varAttr'] ] = $choice['varValue'];
+				}
+			}
+		}
+
+		$product_id = ! empty( $model['wooId'] ) ? (int) $model['wooId'] : (int) $series['wooId'];
+		if ( ! $product_id ) {
+			$product_id = (int) $manifest['woo']['fallbackProduct'];
+		}
 
 		return array(
-			'price'        => $price,
-			'priceMode'    => $price_mode,
-			'productId'    => $product_id,
-			'model_name'   => $model['name'],
-			'model_type'   => isset( $model['type'] ) ? $model['type'] : 'custom',
-			'layout_label' => $layout_label,
-			'color_name'   => $color_name,
-			'series_name'  => isset( $series['name'] ) ? $series['name'] : '',
+			'price'          => $price,
+			'priceMode'      => isset( $series['priceMode'] ) ? $series['priceMode'] : 'dynamic',
+			'productId'      => $product_id,
+			'series_name'    => $series['name'],
+			'model_name'     => $model['name'],
+			'model_type'     => $model['type'],
+			'layout_label'   => $layout_label,
+			'color_name'     => $color_name,
+			'option_labels'  => $option_labels,
+			'variation_attr' => $var_attr,
 		);
 	}
+
+	/* --------------------------------------------------------------------- *
+	 * Helpers.
+	 * --------------------------------------------------------------------- */
 
 	/**
 	 * Finds an item by its 'id' key inside a list.
 	 *
-	 * @param array  $list List of associative arrays.
-	 * @param string $id   ID to find.
+	 * @param array  $list List.
+	 * @param string $id   ID.
 	 * @return array|null
 	 */
 	public static function find_by_id( $list, $id ) {
@@ -244,7 +424,7 @@ class Config {
 	}
 
 	/**
-	 * Sanitizes an identifier (alphanumeric, dash, underscore).
+	 * Sanitizes an identifier.
 	 *
 	 * @param string $id Raw id.
 	 * @return string
@@ -255,7 +435,7 @@ class Config {
 	}
 
 	/**
-	 * Validates a hex/rgba color string, falling back to a default.
+	 * Validates a color string.
 	 *
 	 * @param string $color Raw color.
 	 * @return string
@@ -272,13 +452,34 @@ class Config {
 	}
 
 	/**
-	 * Validates a module type against the allowed list.
+	 * Validates a module type.
 	 *
 	 * @param string $type Raw type.
 	 * @return string
 	 */
 	private static function clean_type( $type ) {
-		$allowed = array( 'sofa', 'table', 'bed', 'custom' );
+		$allowed = array( 'sofa', 'table', 'bed', 'chair', 'custom' );
 		return in_array( $type, $allowed, true ) ? $type : 'custom';
+	}
+
+	/**
+	 * Validates the price mode.
+	 *
+	 * @param string $mode Raw mode.
+	 * @return string
+	 */
+	private static function clean_price_mode( $mode ) {
+		$allowed = array( 'dynamic', 'product', 'variation' );
+		return in_array( $mode, $allowed, true ) ? $mode : 'dynamic';
+	}
+
+	/**
+	 * Cleans a WooCommerce attribute key (e.g. pa_size or size).
+	 *
+	 * @param string $key Raw key.
+	 * @return string
+	 */
+	private static function clean_attr_key( $key ) {
+		return sanitize_title( (string) $key );
 	}
 }

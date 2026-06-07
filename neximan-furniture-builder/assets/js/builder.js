@@ -96,12 +96,18 @@
 			return;
 		}
 
+		// The signed pricing manifest is echoed back verbatim to the server.
+		var manifestNode = root.querySelector( '.neximan-manifest' );
+		var manifestJson = manifestNode ? manifestNode.textContent : '';
+		var signature = root.getAttribute( 'data-sig' ) || '';
+
 		var els = {
 			image: root.querySelector( '.neximan-main-image' ),
 			display: root.querySelector( '.neximan-sofa-display' ),
 			seriesTabs: root.querySelector( '.neximan-series-tabs' ),
 			modelTabs: root.querySelector( '.neximan-model-tabs' ),
 			layouts: root.querySelector( '.neximan-layout-options' ),
+			options: root.querySelector( '.neximan-options' ),
 			colors: root.querySelector( '.neximan-color-options' ),
 			infoLayout: root.querySelector( '.neximan-info-layout' ),
 			infoModule: root.querySelector( '.neximan-info-module' ),
@@ -110,7 +116,7 @@
 			feedback: root.querySelector( '.neximan-feedback' )
 		};
 
-		var state = { seriesIndex: 0, modelId: '', layoutId: '', colorId: '' };
+		var state = { seriesIndex: 0, modelId: '', layoutId: '', colorId: '', options: {} };
 
 		/**
 		 * Returns the active series object.
@@ -149,6 +155,12 @@
 			if ( color ) {
 				total += parseFloat( color.price ) || 0;
 			}
+			( activeSeries().options || [] ).forEach( function ( group ) {
+				var choice = byId( group.choices, state.options[ group.id ] );
+				if ( choice ) {
+					total += parseFloat( choice.price ) || 0;
+				}
+			} );
 			return total;
 		}
 
@@ -235,6 +247,55 @@
 					renderPreview();
 				} );
 				els.colors.appendChild( btn );
+			} );
+		}
+
+		/**
+		 * Renders the option groups (e.g. size) for the active series.
+		 *
+		 * @return {void}
+		 */
+		function renderOptions() {
+			if ( ! els.options ) {
+				return;
+			}
+			els.options.innerHTML = '';
+			var groups = activeSeries().options || [];
+
+			groups.forEach( function ( group ) {
+				if ( ! group.choices || ! group.choices.length ) {
+					return;
+				}
+
+				var section = document.createElement( 'div' );
+				section.className = 'neximan-control-section';
+
+				var label = document.createElement( 'label' );
+				label.className = 'neximan-control-label';
+				label.textContent = group.label || '';
+				section.appendChild( label );
+
+				var row = document.createElement( 'div' );
+				row.className = 'neximan-option-choices';
+
+				group.choices.forEach( function ( choice ) {
+					var btn = makeButton( 'neximan-option-btn', choice.name, {
+						'data-group': group.id,
+						'data-choice': choice.id
+					} );
+					if ( state.options[ group.id ] === choice.id ) {
+						btn.classList.add( 'is-active' );
+					}
+					btn.addEventListener( 'click', function () {
+						state.options[ group.id ] = choice.id;
+						markActive( row, 'neximan-option-btn', btn );
+						renderPreview();
+					} );
+					row.appendChild( btn );
+				} );
+
+				section.appendChild( row );
+				els.options.appendChild( section );
 			} );
 		}
 
@@ -340,7 +401,17 @@
 			state.seriesIndex = index;
 			var series = activeSeries();
 			state.colorId = series.colors.length ? series.colors[ 0 ].id : '';
+
+			// Default each option group to its first choice.
+			state.options = {};
+			( series.options || [] ).forEach( function ( group ) {
+				if ( group.choices && group.choices.length ) {
+					state.options[ group.id ] = group.choices[ 0 ].id;
+				}
+			} );
+
 			renderModelTabs();
+			renderOptions();
 			renderColors();
 			selectModel( series.models.length ? series.models[ 0 ].id : '' );
 		}
@@ -364,13 +435,15 @@
 			var body = new URLSearchParams();
 			body.append( 'action', 'neximan_add_to_cart' );
 			body.append( 'nonce', settings.nonce );
-			body.append( 'source', config.source || 'inline' );
-			body.append( 'post_id', root.getAttribute( 'data-post-id' ) || '' );
-			body.append( 'widget_id', root.getAttribute( 'data-widget-id' ) || '' );
-			body.append( 'series_post_id', series.postId || 0 );
+			body.append( 'manifest', manifestJson );
+			body.append( 'sig', signature );
+			body.append( 'series', series.id );
 			body.append( 'model', state.modelId );
 			body.append( 'layout', state.layoutId );
 			body.append( 'color', state.colorId );
+			Object.keys( state.options ).forEach( function ( groupId ) {
+				body.append( 'options[' + groupId + ']', state.options[ groupId ] );
+			} );
 
 			fetch( settings.ajaxUrl, {
 				method: 'POST',
