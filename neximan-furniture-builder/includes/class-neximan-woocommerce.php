@@ -67,49 +67,74 @@ class WooCommerce {
 			wp_send_json_error( array( 'message' => __( 'WooCommerce is not available.', 'neximan-builder' ) ) );
 		}
 
-		$post_id    = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
-		$widget_id  = isset( $_POST['widget_id'] ) ? sanitize_text_field( wp_unslash( $_POST['widget_id'] ) ) : '';
-		$module_key = isset( $_POST['module'] ) ? sanitize_text_field( wp_unslash( $_POST['module'] ) ) : '';
-		$layout_key = isset( $_POST['layout'] ) ? sanitize_text_field( wp_unslash( $_POST['layout'] ) ) : '';
-		$color_key  = isset( $_POST['color'] ) ? sanitize_text_field( wp_unslash( $_POST['color'] ) ) : '';
+		$source    = isset( $_POST['source'] ) ? sanitize_text_field( wp_unslash( $_POST['source'] ) ) : 'inline';
+		$model_id  = isset( $_POST['model'] ) ? sanitize_text_field( wp_unslash( $_POST['model'] ) ) : '';
+		$layout_id = isset( $_POST['layout'] ) ? sanitize_text_field( wp_unslash( $_POST['layout'] ) ) : '';
+		$color_id  = isset( $_POST['color'] ) ? sanitize_text_field( wp_unslash( $_POST['color'] ) ) : '';
 
-		if ( ! $post_id || '' === $widget_id ) {
-			wp_send_json_error( array( 'message' => __( 'Invalid request.', 'neximan-builder' ) ) );
+		$fallback_product = 0;
+		$currency_symbol  = '';
+
+		if ( 'posts' === $source ) {
+			// Post-based series: recompute from the stored CPT config.
+			$series_post_id = isset( $_POST['series_post_id'] ) ? absint( $_POST['series_post_id'] ) : 0;
+			if ( ! $series_post_id ) {
+				wp_send_json_error( array( 'message' => __( 'Invalid request.', 'neximan-builder' ) ) );
+			}
+
+			$resolved = Config::resolve_selection( $series_post_id, $model_id, $layout_id, $color_id );
+
+			// Fallback product comes from the widget settings (optional).
+			$post_id   = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
+			$widget_id = isset( $_POST['widget_id'] ) ? sanitize_text_field( wp_unslash( $_POST['widget_id'] ) ) : '';
+			if ( $post_id && $widget_id ) {
+				$settings = $this->get_widget_settings( $post_id, $widget_id );
+				if ( null !== $settings && ! empty( $settings['woo_fallback_product'] ) ) {
+					$fallback_product = (int) $settings['woo_fallback_product'];
+				}
+				if ( null !== $settings && ! empty( $settings['currency_symbol'] ) ) {
+					$currency_symbol = $settings['currency_symbol'];
+				}
+			}
+		} else {
+			// Inline source: recompute from the Elementor element settings.
+			$post_id   = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
+			$widget_id = isset( $_POST['widget_id'] ) ? sanitize_text_field( wp_unslash( $_POST['widget_id'] ) ) : '';
+
+			if ( ! $post_id || '' === $widget_id ) {
+				wp_send_json_error( array( 'message' => __( 'Invalid request.', 'neximan-builder' ) ) );
+			}
+
+			$settings = $this->get_widget_settings( $post_id, $widget_id );
+			if ( null === $settings ) {
+				wp_send_json_error( array( 'message' => __( 'Builder configuration could not be found.', 'neximan-builder' ) ) );
+			}
+
+			require_once NEXIMAN_BUILDER_PATH . 'widgets/class-neximan-builder-widget.php';
+			$config = \Neximan\Builder\Widgets\Builder_Widget::build_config( $settings );
+
+			$fallback_product = (int) $config['woo']['fallbackProduct'];
+			$currency_symbol  = $config['currency']['symbol'];
+
+			$series = isset( $config['series'][0] ) ? $config['series'][0] : null;
+			if ( null === $series ) {
+				wp_send_json_error( array( 'message' => __( 'Builder configuration could not be found.', 'neximan-builder' ) ) );
+			}
+
+			$price_mode = isset( $series['priceMode'] ) ? $series['priceMode'] : 'dynamic';
+			$resolved   = Config::resolve_from_series( $series, $price_mode, $model_id, $layout_id, $color_id );
 		}
 
-		$settings = $this->get_widget_settings( $post_id, $widget_id );
-		if ( null === $settings ) {
-			wp_send_json_error( array( 'message' => __( 'Builder configuration could not be found.', 'neximan-builder' ) ) );
-		}
-
-		require_once NEXIMAN_BUILDER_PATH . 'widgets/class-neximan-builder-widget.php';
-		$config = \Neximan\Builder\Widgets\Builder_Widget::build_config( $settings );
-
-		if ( ! isset( $config['modules'][ $module_key ] ) ) {
-			wp_send_json_error( array( 'message' => __( 'Selected module is not valid.', 'neximan-builder' ) ) );
-		}
-
-		$module = $config['modules'][ $module_key ];
-		$price  = (float) $module['basePrice'];
-
-		$layout_label = '';
-		if ( isset( $config['layouts'][ $layout_key ] ) ) {
-			$price       += (float) $config['layouts'][ $layout_key ]['price'];
-			$layout_label = $config['layouts'][ $layout_key ]['label'];
-		}
-
-		$color_name = '';
-		if ( isset( $config['colors'][ $color_key ] ) ) {
-			$price     += (float) $config['colors'][ $color_key ]['price'];
-			$color_name = $config['colors'][ $color_key ]['name'];
+		if ( null === $resolved ) {
+			wp_send_json_error( array( 'message' => __( 'Selected configuration is not valid.', 'neximan-builder' ) ) );
 		}
 
 		// Resolve the WooCommerce product to attach the line to.
-		$product_id = $module['wooId'] ? $module['wooId'] : (int) $config['woo']['fallbackProduct'];
+		$product_id = ! empty( $resolved['productId'] ) ? (int) $resolved['productId'] : $fallback_product;
 		if ( ! $product_id ) {
 			wp_send_json_error(
 				array(
-					'message' => __( 'No WooCommerce product is linked. Set a Module Product ID or a Fallback Product ID.', 'neximan-builder' ),
+					'message' => __( 'No WooCommerce product is linked. Set a Product ID on the series/model or a Fallback Product ID.', 'neximan-builder' ),
 				)
 			);
 		}
@@ -119,16 +144,17 @@ class WooCommerce {
 			wp_send_json_error( array( 'message' => __( 'The linked product cannot be purchased.', 'neximan-builder' ) ) );
 		}
 
-		$price_mode = $config['woo']['priceMode'];
+		$price_mode = $resolved['priceMode'];
 
 		$selection = array(
-			'module_name'  => $module['name'],
-			'module_type'  => $module['type'],
-			'layout_label' => $layout_label,
-			'color_name'   => $color_name,
-			'price'        => 'dynamic' === $price_mode ? $price : (float) $product->get_price(),
+			'series_name'  => isset( $resolved['series_name'] ) ? $resolved['series_name'] : '',
+			'module_name'  => $resolved['model_name'],
+			'module_type'  => $resolved['model_type'],
+			'layout_label' => $resolved['layout_label'],
+			'color_name'   => $resolved['color_name'],
+			'price'        => 'dynamic' === $price_mode ? (float) $resolved['price'] : (float) $product->get_price(),
 			'price_mode'   => $price_mode,
-			'currency'     => $config['currency']['symbol'],
+			'currency'     => $currency_symbol,
 		);
 
 		$cart_item_data = array( self::CART_KEY => $selection );
@@ -281,6 +307,13 @@ class WooCommerce {
 
 		$data = $cart_item[ self::CART_KEY ];
 
+		if ( ! empty( $data['series_name'] ) ) {
+			$item_data[] = array(
+				'key'   => __( 'Series', 'neximan-builder' ),
+				'value' => wc_clean( $data['series_name'] ),
+			);
+		}
+
 		if ( ! empty( $data['module_name'] ) ) {
 			$item_data[] = array(
 				'key'   => __( 'Model', 'neximan-builder' ),
@@ -323,6 +356,9 @@ class WooCommerce {
 
 		$data = $values[ self::CART_KEY ];
 
+		if ( ! empty( $data['series_name'] ) ) {
+			$item->add_meta_data( __( 'Series', 'neximan-builder' ), $data['series_name'] );
+		}
 		if ( ! empty( $data['module_name'] ) ) {
 			$item->add_meta_data( __( 'Model', 'neximan-builder' ), $data['module_name'] );
 		}

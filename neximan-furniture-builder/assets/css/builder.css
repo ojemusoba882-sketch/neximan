@@ -32,16 +32,31 @@
 	margin: 0 auto;
 }
 
-/* Module tabs */
-.neximan-module-tabs {
+/* Series & model tabs */
+.neximan-series-tabs,
+.neximan-model-tabs {
 	display: flex;
 	justify-content: center;
 	gap: 1rem;
-	margin-bottom: 2rem;
 	flex-wrap: wrap;
 }
 
-.neximan-module-tab {
+.neximan-series-tabs:empty,
+.neximan-model-tabs:empty {
+	display: none;
+}
+
+.neximan-series-tabs {
+	margin-bottom: 2rem;
+}
+
+.neximan-model-tabs {
+	justify-content: flex-start;
+	gap: 0.5rem;
+}
+
+.neximan-series-tab,
+.neximan-model-tab {
 	padding: 10px 25px;
 	background: transparent;
 	border: 2px solid var(--nx-secondary);
@@ -53,15 +68,26 @@
 	transition: all 0.2s ease;
 }
 
-.neximan-module-tab.is-active {
+.neximan-model-tab {
+	padding: 8px 18px;
+	font-size: 0.9rem;
+}
+
+.neximan-series-tab.is-active,
+.neximan-model-tab.is-active {
 	background: var(--nx-dark);
 	color: var(--nx-white);
 	border-color: var(--nx-dark);
 	box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
-.neximan-module-tab:hover:not(.is-active) {
+.neximan-series-tab:hover:not(.is-active),
+.neximan-model-tab:hover:not(.is-active) {
 	background: var(--nx-light);
+}
+
+.neximan-model-tabs-wrap:has(.neximan-model-tabs:empty) {
+	display: none;
 }
 
 /* Header */

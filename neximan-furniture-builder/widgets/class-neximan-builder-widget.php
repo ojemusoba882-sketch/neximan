@@ -12,6 +12,7 @@ use Elementor\Controls_Manager;
 use Elementor\Repeater;
 use Elementor\Group_Control_Typography;
 use Elementor\Core\Kits\Documents\Tabs\Global_Typography;
+use Neximan\Builder\Config;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -21,16 +22,15 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Class Builder_Widget
  *
  * Renders a configurable furniture builder (sofa / table / ...) with dynamic
- * pricing and optional WooCommerce add-to-cart.
+ * pricing and optional WooCommerce add-to-cart. Supports two data sources:
+ *  - inline : quick, fixed configuration via Elementor repeaters/slots.
+ *  - posts  : unlimited models/layouts pulled from "Neximan Builder" series
+ *             posts, with one or more parent products (Noah, Melorin, ...).
  */
 class Builder_Widget extends Widget_Base {
 
 	/**
-	 * Maximum number of layout image slots provided per module.
-	 *
-	 * Layouts are defined once (shared list) and each module supplies an image
-	 * for the slots it supports. A module hides layout buttons it has no image
-	 * for, which lets a "table" module expose different layouts than a "sofa".
+	 * Maximum number of layout image slots in inline mode.
 	 *
 	 * @var int
 	 */
@@ -106,6 +106,7 @@ class Builder_Widget extends Widget_Base {
 	 */
 	protected function register_controls() {
 		$this->register_content_controls();
+		$this->register_series_controls();
 		$this->register_layout_controls();
 		$this->register_module_controls();
 		$this->register_color_controls();
@@ -114,7 +115,7 @@ class Builder_Widget extends Widget_Base {
 	}
 
 	/**
-	 * General content controls (texts).
+	 * General content controls.
 	 *
 	 * @return void
 	 */
@@ -124,6 +125,20 @@ class Builder_Widget extends Widget_Base {
 			array(
 				'label' => __( 'General', 'neximan-builder' ),
 				'tab'   => Controls_Manager::TAB_CONTENT,
+			)
+		);
+
+		$this->add_control(
+			'data_source',
+			array(
+				'label'       => __( 'Data Source', 'neximan-builder' ),
+				'type'        => Controls_Manager::SELECT,
+				'default'     => 'inline',
+				'options'     => array(
+					'inline' => __( 'Inline (simple / fixed)', 'neximan-builder' ),
+					'posts'  => __( 'Builder Posts (unlimited / multiple products)', 'neximan-builder' ),
+				),
+				'description' => __( 'Inline: configure everything here. Builder Posts: select one or more "Neximan Builder" series (e.g. Noah, Melorin), each a parent product with unlimited models & layouts.', 'neximan-builder' ),
 			)
 		);
 
@@ -188,8 +203,6 @@ class Builder_Widget extends Widget_Base {
 			array(
 				'label'        => __( 'Show Live Price', 'neximan-builder' ),
 				'type'         => Controls_Manager::SWITCHER,
-				'label_on'     => __( 'Yes', 'neximan-builder' ),
-				'label_off'    => __( 'No', 'neximan-builder' ),
 				'return_value' => 'yes',
 				'default'      => 'yes',
 			)
@@ -240,7 +253,62 @@ class Builder_Widget extends Widget_Base {
 	}
 
 	/**
-	 * Layout slots controls (the shared list of configurations / arrangements).
+	 * Series selection controls (post data source).
+	 *
+	 * @return void
+	 */
+	private function register_series_controls() {
+		$this->start_controls_section(
+			'section_series',
+			array(
+				'label'     => __( 'Series / Products', 'neximan-builder' ),
+				'tab'       => Controls_Manager::TAB_CONTENT,
+				'condition' => array( 'data_source' => 'posts' ),
+			)
+		);
+
+		$this->add_control(
+			'series_ids',
+			array(
+				'label'       => __( 'Select Builders', 'neximan-builder' ),
+				'type'        => Controls_Manager::SELECT2,
+				'multiple'    => true,
+				'label_block' => true,
+				'options'     => $this->get_series_options(),
+				'description' => __( 'Each selected builder appears as a top-level tab (e.g. Noah, Melorin). Manage them under "Neximan Builders".', 'neximan-builder' ),
+			)
+		);
+
+		$this->end_controls_section();
+	}
+
+	/**
+	 * Returns published series posts as id => title options.
+	 *
+	 * @return array
+	 */
+	private function get_series_options() {
+		$options = array();
+
+		$posts = get_posts(
+			array(
+				'post_type'      => Config::POST_TYPE,
+				'post_status'    => 'publish',
+				'posts_per_page' => 100,
+				'orderby'        => 'title',
+				'order'          => 'ASC',
+			)
+		);
+
+		foreach ( $posts as $post ) {
+			$options[ $post->ID ] = $post->post_title ? $post->post_title : sprintf( '#%d', $post->ID );
+		}
+
+		return $options;
+	}
+
+	/**
+	 * Inline layout slot controls.
 	 *
 	 * @return void
 	 */
@@ -248,17 +316,9 @@ class Builder_Widget extends Widget_Base {
 		$this->start_controls_section(
 			'section_layouts',
 			array(
-				'label' => __( 'Layout Options', 'neximan-builder' ),
-				'tab'   => Controls_Manager::TAB_CONTENT,
-			)
-		);
-
-		$this->add_control(
-			'layouts_notice',
-			array(
-				'type'            => Controls_Manager::RAW_HTML,
-				'raw'             => __( 'Define the shared list of arrangements (e.g. 2-seater, 3-seater, L-shape). Each layout maps to an image "slot". In every Module you then upload an image for the matching slot. Buttons without an image for the active module are hidden automatically.', 'neximan-builder' ),
-				'content_classes' => 'elementor-descriptor',
+				'label'     => __( 'Layout Options', 'neximan-builder' ),
+				'tab'       => Controls_Manager::TAB_CONTENT,
+				'condition' => array( 'data_source' => 'inline' ),
 			)
 		);
 
@@ -279,7 +339,7 @@ class Builder_Widget extends Widget_Base {
 			array(
 				'label'       => __( 'Image Slot', 'neximan-builder' ),
 				'type'        => Controls_Manager::NUMBER,
-				'description' => __( 'Slot number (1-8). The matching "Layout Image (Slot N)" inside each Module is used for this layout.', 'neximan-builder' ),
+				'description' => __( 'Slot number (1-8). The matching "Layout Image (Slot N)" inside each Model is used for this layout.', 'neximan-builder' ),
 				'default'     => 1,
 				'min'         => 1,
 				'max'         => self::MAX_SLOTS,
@@ -290,12 +350,11 @@ class Builder_Widget extends Widget_Base {
 		$repeater->add_control(
 			'layout_price',
 			array(
-				'label'       => __( 'Price Modifier', 'neximan-builder' ),
-				'type'        => Controls_Manager::NUMBER,
-				'description' => __( 'Amount added to the module base price when this layout is selected.', 'neximan-builder' ),
-				'default'     => 0,
-				'min'         => 0,
-				'step'        => 1,
+				'label'   => __( 'Price Modifier', 'neximan-builder' ),
+				'type'    => Controls_Manager::NUMBER,
+				'default' => 0,
+				'min'     => 0,
+				'step'    => 1,
 			)
 		);
 
@@ -309,37 +368,18 @@ class Builder_Widget extends Widget_Base {
 					array(
 						'layout_label' => __( '۲ نفره', 'neximan-builder' ),
 						'layout_slot'  => 1,
-						'layout_price' => 0,
 					),
 					array(
 						'layout_label' => __( '۳ نفره', 'neximan-builder' ),
 						'layout_slot'  => 2,
-						'layout_price' => 0,
 					),
 					array(
 						'layout_label' => __( '۴ نفره', 'neximan-builder' ),
 						'layout_slot'  => 3,
-						'layout_price' => 0,
-					),
-					array(
-						'layout_label' => __( '۵ نفره', 'neximan-builder' ),
-						'layout_slot'  => 4,
-						'layout_price' => 0,
-					),
-					array(
-						'layout_label' => __( '۶ نفره', 'neximan-builder' ),
-						'layout_slot'  => 5,
-						'layout_price' => 0,
-					),
-					array(
-						'layout_label' => __( '۷ نفره', 'neximan-builder' ),
-						'layout_slot'  => 6,
-						'layout_price' => 0,
 					),
 					array(
 						'layout_label' => __( 'L شکل', 'neximan-builder' ),
-						'layout_slot'  => 7,
-						'layout_price' => 0,
+						'layout_slot'  => 4,
 					),
 				),
 			)
@@ -349,7 +389,7 @@ class Builder_Widget extends Widget_Base {
 	}
 
 	/**
-	 * Module / product controls (sofa designs, tables, ...).
+	 * Inline model controls.
 	 *
 	 * @return void
 	 */
@@ -357,8 +397,9 @@ class Builder_Widget extends Widget_Base {
 		$this->start_controls_section(
 			'section_modules',
 			array(
-				'label' => __( 'Modules / Products', 'neximan-builder' ),
-				'tab'   => Controls_Manager::TAB_CONTENT,
+				'label'     => __( 'Models', 'neximan-builder' ),
+				'tab'       => Controls_Manager::TAB_CONTENT,
+				'condition' => array( 'data_source' => 'inline' ),
 			)
 		);
 
@@ -367,7 +408,7 @@ class Builder_Widget extends Widget_Base {
 		$repeater->add_control(
 			'module_name',
 			array(
-				'label'       => __( 'Module Name (tab)', 'neximan-builder' ),
+				'label'       => __( 'Model Name (tab)', 'neximan-builder' ),
 				'type'        => Controls_Manager::TEXT,
 				'default'     => __( 'مدل ۱', 'neximan-builder' ),
 				'label_block' => true,
@@ -377,7 +418,7 @@ class Builder_Widget extends Widget_Base {
 		$repeater->add_control(
 			'module_type',
 			array(
-				'label'   => __( 'Module Type', 'neximan-builder' ),
+				'label'   => __( 'Type', 'neximan-builder' ),
 				'type'    => Controls_Manager::SELECT,
 				'default' => 'sofa',
 				'options' => array(
@@ -405,13 +446,12 @@ class Builder_Widget extends Widget_Base {
 			array(
 				'label'       => __( 'WooCommerce Product ID', 'neximan-builder' ),
 				'type'        => Controls_Manager::NUMBER,
-				'description' => __( 'Optional. If set, "Add to cart" adds this product with the chosen configuration as line-item data.', 'neximan-builder' ),
+				'description' => __( 'Optional per-model product. Falls back to the WooCommerce section product.', 'neximan-builder' ),
 				'min'         => 0,
 				'step'        => 1,
 			)
 		);
 
-		// Image controls, one per slot.
 		for ( $slot = 1; $slot <= self::MAX_SLOTS; $slot++ ) {
 			$repeater->add_control(
 				'module_image_' . $slot,
@@ -444,7 +484,7 @@ class Builder_Widget extends Widget_Base {
 	}
 
 	/**
-	 * Fabric color controls.
+	 * Inline fabric color controls.
 	 *
 	 * @return void
 	 */
@@ -452,8 +492,9 @@ class Builder_Widget extends Widget_Base {
 		$this->start_controls_section(
 			'section_colors',
 			array(
-				'label' => __( 'Fabric Colors', 'neximan-builder' ),
-				'tab'   => Controls_Manager::TAB_CONTENT,
+				'label'     => __( 'Fabric Colors', 'neximan-builder' ),
+				'tab'       => Controls_Manager::TAB_CONTENT,
+				'condition' => array( 'data_source' => 'inline' ),
 			)
 		);
 
@@ -508,14 +549,6 @@ class Builder_Widget extends Widget_Base {
 						'color_name'  => __( 'کرم', 'neximan-builder' ),
 					),
 					array(
-						'color_value' => '#c3ccd4',
-						'color_name'  => __( 'طوسی', 'neximan-builder' ),
-					),
-					array(
-						'color_value' => '#1f2a63',
-						'color_name'  => __( 'سرمه‌ای', 'neximan-builder' ),
-					),
-					array(
 						'color_value' => '#e9b576',
 						'color_name'  => __( 'عسلی', 'neximan-builder' ),
 					),
@@ -545,7 +578,7 @@ class Builder_Widget extends Widget_Base {
 				'woo_missing',
 				array(
 					'type'            => Controls_Manager::RAW_HTML,
-					'raw'             => __( 'WooCommerce is not active. Install and activate WooCommerce to enable cart and checkout features.', 'neximan-builder' ),
+					'raw'             => __( 'WooCommerce is not active. Install and activate it to enable cart and checkout.', 'neximan-builder' ),
 					'content_classes' => 'elementor-panel-alert elementor-panel-alert-warning',
 				)
 			);
@@ -568,15 +601,18 @@ class Builder_Widget extends Widget_Base {
 		$this->add_control(
 			'woo_price_mode',
 			array(
-				'label'       => __( 'Price Mode', 'neximan-builder' ),
+				'label'       => __( 'Price Mode (inline)', 'neximan-builder' ),
 				'type'        => Controls_Manager::SELECT,
 				'default'     => 'dynamic',
-				'description' => __( 'Dynamic: use the builder price as the line-item price. Product: use the linked WooCommerce product price.', 'neximan-builder' ),
+				'description' => __( 'Used for the inline data source. Builder Posts define their own price mode.', 'neximan-builder' ),
 				'options'     => array(
 					'dynamic' => __( 'Dynamic (builder price)', 'neximan-builder' ),
 					'product' => __( 'WooCommerce product price', 'neximan-builder' ),
 				),
-				'condition'   => array( 'woo_action!' => 'none' ),
+				'condition'   => array(
+					'woo_action!'  => 'none',
+					'data_source'  => 'inline',
+				),
 			)
 		);
 
@@ -585,7 +621,7 @@ class Builder_Widget extends Widget_Base {
 			array(
 				'label'       => __( 'Fallback Product ID', 'neximan-builder' ),
 				'type'        => Controls_Manager::NUMBER,
-				'description' => __( 'Used when a module has no specific WooCommerce Product ID. Useful for dynamic-priced custom products.', 'neximan-builder' ),
+				'description' => __( 'Used when a model/series has no specific product. Useful for dynamic-priced custom products.', 'neximan-builder' ),
 				'min'         => 0,
 				'step'        => 1,
 				'condition'   => array( 'woo_action!' => 'none' ),
@@ -670,47 +706,53 @@ class Builder_Widget extends Widget_Base {
 	}
 
 	/**
-	 * Builds the normalized configuration array used by both render and JSON output.
+	 * Builds one normalized series from inline (Elementor repeater) settings.
 	 *
 	 * @param array $settings Widget settings.
-	 * @return array
+	 * @return array Series array.
 	 */
-	public static function build_config( array $settings ) {
-		// Layouts.
-		$layouts = array();
+	private static function build_inline_series( array $settings ) {
+		// Map slot -> layout meta.
+		$slot_layouts = array();
 		if ( ! empty( $settings['layouts'] ) && is_array( $settings['layouts'] ) ) {
 			foreach ( $settings['layouts'] as $index => $layout ) {
 				$slot = isset( $layout['layout_slot'] ) ? (int) $layout['layout_slot'] : ( $index + 1 );
-				$key  = 'l' . $index;
 
-				$layouts[ $key ] = array(
+				$slot_layouts[ $slot ] = array(
+					'id'    => 'l' . $index,
 					'label' => isset( $layout['layout_label'] ) ? $layout['layout_label'] : '',
-					'slot'  => $slot,
 					'price' => isset( $layout['layout_price'] ) ? (float) $layout['layout_price'] : 0,
 				);
 			}
 		}
 
-		// Modules.
-		$modules = array();
+		// Models -> layouts (only slots that have an image).
+		$models = array();
 		if ( ! empty( $settings['modules'] ) && is_array( $settings['modules'] ) ) {
-			foreach ( $settings['modules'] as $index => $module ) {
-				$key    = 'm' . $index;
-				$images = array();
+			foreach ( $settings['modules'] as $mindex => $module ) {
+				$layouts = array();
 
-				for ( $slot = 1; $slot <= self::MAX_SLOTS; $slot++ ) {
+				foreach ( $slot_layouts as $slot => $meta ) {
 					$field = 'module_image_' . $slot;
-					if ( ! empty( $module[ $field ]['url'] ) ) {
-						$images[ $slot ] = esc_url_raw( $module[ $field ]['url'] );
+					if ( empty( $module[ $field ]['url'] ) ) {
+						continue;
 					}
+
+					$layouts[] = array(
+						'id'    => $meta['id'],
+						'label' => $meta['label'],
+						'image' => esc_url_raw( $module[ $field ]['url'] ),
+						'price' => $meta['price'],
+					);
 				}
 
-				$modules[ $key ] = array(
+				$models[] = array(
+					'id'        => 'm' . $mindex,
 					'name'      => isset( $module['module_name'] ) ? $module['module_name'] : '',
 					'type'      => isset( $module['module_type'] ) ? $module['module_type'] : 'custom',
 					'basePrice' => isset( $module['module_base_price'] ) ? (float) $module['module_base_price'] : 0,
 					'wooId'     => isset( $module['module_woo_id'] ) ? (int) $module['module_woo_id'] : 0,
-					'images'    => $images,
+					'layouts'   => $layouts,
 				);
 			}
 		}
@@ -718,37 +760,80 @@ class Builder_Widget extends Widget_Base {
 		// Colors.
 		$colors = array();
 		if ( ! empty( $settings['colors'] ) && is_array( $settings['colors'] ) ) {
-			foreach ( $settings['colors'] as $index => $color ) {
-				$key = 'c' . $index;
-
-				$colors[ $key ] = array(
-					'value' => isset( $color['color_value'] ) ? $color['color_value'] : '#cccccc',
+			foreach ( $settings['colors'] as $cindex => $color ) {
+				$colors[] = array(
+					'id'    => 'c' . $cindex,
 					'name'  => isset( $color['color_name'] ) ? $color['color_name'] : '',
+					'value' => isset( $color['color_value'] ) ? $color['color_value'] : '#cccccc',
 					'price' => isset( $color['color_price'] ) ? (float) $color['color_price'] : 0,
 				);
 			}
 		}
 
 		return array(
-			'currency'      => array(
-				'symbol'    => isset( $settings['currency_symbol'] ) ? $settings['currency_symbol'] : '',
-				'position'  => isset( $settings['currency_position'] ) ? $settings['currency_position'] : 'after',
-				'separator' => isset( $settings['thousand_separator'] ) ? $settings['thousand_separator'] : ',',
-			),
-			'showPrice'     => ( isset( $settings['show_price'] ) && 'yes' === $settings['show_price'] ),
-			'woo'           => array(
-				'action'           => isset( $settings['woo_action'] ) ? $settings['woo_action'] : 'none',
-				'priceMode'        => isset( $settings['woo_price_mode'] ) ? $settings['woo_price_mode'] : 'dynamic',
-				'fallbackProduct'  => isset( $settings['woo_fallback_product'] ) ? (int) $settings['woo_fallback_product'] : 0,
-			),
-			'layouts'       => $layouts,
-			'modules'       => $modules,
-			'colors'        => $colors,
+			'id'        => 'inline',
+			'postId'    => 0,
+			'name'      => '',
+			'wooId'     => isset( $settings['woo_fallback_product'] ) ? (int) $settings['woo_fallback_product'] : 0,
+			'priceMode' => isset( $settings['woo_price_mode'] ) ? $settings['woo_price_mode'] : 'dynamic',
+			'models'    => $models,
+			'colors'    => $colors,
 		);
 	}
 
 	/**
-	 * Renders the widget on the front-end.
+	 * Builds the full normalized config (series list + meta) from settings.
+	 *
+	 * @param array $settings Widget settings.
+	 * @return array
+	 */
+	public static function build_config( array $settings ) {
+		$source = isset( $settings['data_source'] ) ? $settings['data_source'] : 'inline';
+		$series = array();
+
+		if ( 'posts' === $source ) {
+			$ids = isset( $settings['series_ids'] ) ? (array) $settings['series_ids'] : array();
+			foreach ( $ids as $id ) {
+				$id = (int) $id;
+				if ( ! $id ) {
+					continue;
+				}
+				$one = Config::get_series( $id );
+				if ( null === $one ) {
+					continue;
+				}
+				$raw                = Config::get_raw( $id );
+				$one['priceMode']   = isset( $raw['priceMode'] ) ? $raw['priceMode'] : 'dynamic';
+				$one['fallbackWoo'] = isset( $settings['woo_fallback_product'] ) ? (int) $settings['woo_fallback_product'] : 0;
+				$series[]           = $one;
+			}
+		} else {
+			$series[] = self::build_inline_series( $settings );
+		}
+
+		return array(
+			'source'    => $source,
+			'currency'  => array(
+				'symbol'    => isset( $settings['currency_symbol'] ) ? $settings['currency_symbol'] : '',
+				'position'  => isset( $settings['currency_position'] ) ? $settings['currency_position'] : 'after',
+				'separator' => isset( $settings['thousand_separator'] ) ? $settings['thousand_separator'] : ',',
+			),
+			'labels'    => array(
+				'layout' => isset( $settings['layout_section_label'] ) ? $settings['layout_section_label'] : '',
+				'color'  => isset( $settings['color_section_label'] ) ? $settings['color_section_label'] : '',
+			),
+			'showPrice' => ( isset( $settings['show_price'] ) && 'yes' === $settings['show_price'] ),
+			'woo'       => array(
+				'action'          => isset( $settings['woo_action'] ) ? $settings['woo_action'] : 'none',
+				'fallbackProduct' => isset( $settings['woo_fallback_product'] ) ? (int) $settings['woo_fallback_product'] : 0,
+			),
+			'series'    => $series,
+		);
+	}
+
+	/**
+	 * Renders the widget on the front-end. The interactive control panel is
+	 * built by builder.js from the embedded JSON; PHP outputs the shell.
 	 *
 	 * @return void
 	 */
@@ -756,52 +841,25 @@ class Builder_Widget extends Widget_Base {
 		$settings = $this->get_settings_for_display();
 		$config   = self::build_config( $settings );
 
-		$uid = 'neximan-' . $this->get_id();
+		$uid     = 'neximan-' . $this->get_id();
 		$post_id = get_the_ID();
 
-		// Determine the default (first) module and a default layout slot.
-		$module_keys = array_keys( $config['modules'] );
-		$layout_keys = array_keys( $config['layouts'] );
-		$color_keys  = array_keys( $config['colors'] );
-
-		$default_module = ! empty( $module_keys ) ? $module_keys[0] : '';
-		$default_color  = ! empty( $color_keys ) ? $color_keys[0] : '';
-
-		// Pick first layout the default module actually has an image for.
-		$default_layout = '';
-		if ( '' !== $default_module ) {
-			foreach ( $layout_keys as $lkey ) {
-				$slot = $config['layouts'][ $lkey ]['slot'];
-				if ( isset( $config['modules'][ $default_module ]['images'][ $slot ] ) ) {
-					$default_layout = $lkey;
-					break;
-				}
+		if ( empty( $config['series'] ) ) {
+			if ( \Elementor\Plugin::$instance->editor->is_edit_mode() ) {
+				echo '<div class="neximan-builder"><p style="padding:2rem;text-align:center">' . esc_html__( 'Select a Builder series or configure the inline data source.', 'neximan-builder' ) . '</p></div>';
 			}
+			return;
 		}
-		if ( '' === $default_layout && ! empty( $layout_keys ) ) {
-			$default_layout = $layout_keys[0];
-		}
-
-		$config['defaults'] = array(
-			'module' => $default_module,
-			'layout' => $default_layout,
-			'color'  => $default_color,
-		);
 		?>
-		<div id="<?php echo esc_attr( $uid ); ?>" class="neximan-builder" data-neximan-builder="<?php echo esc_attr( $uid ); ?>" data-post-id="<?php echo esc_attr( $post_id ); ?>" data-widget-id="<?php echo esc_attr( $this->get_id() ); ?>">
+		<div id="<?php echo esc_attr( $uid ); ?>"
+			class="neximan-builder"
+			data-neximan-builder="<?php echo esc_attr( $uid ); ?>"
+			data-source="<?php echo esc_attr( $config['source'] ); ?>"
+			data-post-id="<?php echo esc_attr( $post_id ); ?>"
+			data-widget-id="<?php echo esc_attr( $this->get_id() ); ?>">
 			<div class="neximan-builder-inner">
 
-				<?php if ( count( $config['modules'] ) > 1 ) : ?>
-					<div class="neximan-module-tabs">
-						<?php foreach ( $config['modules'] as $mkey => $module ) : ?>
-							<button type="button"
-								class="neximan-module-tab<?php echo ( $mkey === $default_module ) ? ' is-active' : ''; ?>"
-								data-module="<?php echo esc_attr( $mkey ); ?>">
-								<?php echo esc_html( $module['name'] ); ?>
-							</button>
-						<?php endforeach; ?>
-					</div>
-				<?php endif; ?>
+				<div class="neximan-series-tabs"></div>
 
 				<div class="neximan-builder-header">
 					<?php if ( ! empty( $settings['title_text'] ) ) : ?>
@@ -827,32 +885,18 @@ class Builder_Widget extends Widget_Base {
 					</div>
 
 					<div class="neximan-control-panel">
+						<div class="neximan-model-tabs-wrap neximan-control-section">
+							<div class="neximan-model-tabs"></div>
+						</div>
+
 						<div class="neximan-control-section">
 							<label class="neximan-control-label"><?php echo esc_html( $settings['layout_section_label'] ); ?></label>
-							<div class="neximan-layout-options">
-								<?php foreach ( $config['layouts'] as $lkey => $layout ) : ?>
-									<button type="button"
-										class="neximan-layout-btn"
-										data-layout="<?php echo esc_attr( $lkey ); ?>"
-										data-slot="<?php echo esc_attr( $layout['slot'] ); ?>">
-										<?php echo esc_html( $layout['label'] ); ?>
-									</button>
-								<?php endforeach; ?>
-							</div>
+							<div class="neximan-layout-options"></div>
 						</div>
 
 						<div class="neximan-control-section">
 							<label class="neximan-control-label"><?php echo esc_html( $settings['color_section_label'] ); ?></label>
-							<div class="neximan-color-options">
-								<?php foreach ( $config['colors'] as $ckey => $color ) : ?>
-									<button type="button"
-										class="neximan-color-swatch"
-										data-color="<?php echo esc_attr( $ckey ); ?>"
-										style="background-color: <?php echo esc_attr( $color['value'] ); ?>;"
-										title="<?php echo esc_attr( $color['name'] ); ?>">
-									</button>
-								<?php endforeach; ?>
-							</div>
+							<div class="neximan-color-options"></div>
 						</div>
 
 						<?php if ( $config['showPrice'] ) : ?>

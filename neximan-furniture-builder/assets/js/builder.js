@@ -1,8 +1,9 @@
 /**
  * Neximan Furniture Builder - front-end behaviour.
  *
- * Handles module/layout/color selection, live price calculation, image masking
- * preview and the WooCommerce AJAX add-to-cart flow.
+ * Builds a two-level configurator (series -> models -> layouts + colors) from
+ * the embedded JSON config, calculates the live price and handles the
+ * WooCommerce AJAX add-to-cart flow.
  */
 ( function () {
 	'use strict';
@@ -13,8 +14,8 @@
 	 * Formats a numeric price using the widget currency settings.
 	 *
 	 * @param {number} amount   Price amount.
-	 * @param {Object} currency Currency config { symbol, position, separator }.
-	 * @return {string} Formatted price.
+	 * @param {Object} currency Currency config.
+	 * @return {string} Formatted price string.
 	 */
 	function formatPrice( amount, currency ) {
 		var sep = currency && typeof currency.separator === 'string' ? currency.separator : ',';
@@ -30,6 +31,41 @@
 		}
 
 		return currency.position === 'before' ? symbol + ' ' + num : num + ' ' + symbol;
+	}
+
+	/**
+	 * Creates a button element.
+	 *
+	 * @param {string} cls   Class name.
+	 * @param {string} text  Text content.
+	 * @param {Object} attrs Data attributes.
+	 * @return {HTMLButtonElement} Button.
+	 */
+	function makeButton( cls, text, attrs ) {
+		var btn = document.createElement( 'button' );
+		btn.type = 'button';
+		btn.className = cls;
+		btn.textContent = text;
+		Object.keys( attrs || {} ).forEach( function ( key ) {
+			btn.setAttribute( key, attrs[ key ] );
+		} );
+		return btn;
+	}
+
+	/**
+	 * Finds an item by id in a list.
+	 *
+	 * @param {Array}  list List of objects with id.
+	 * @param {string} id   Id to find.
+	 * @return {Object|null} Found item or null.
+	 */
+	function byId( list, id ) {
+		for ( var i = 0; i < ( list || [] ).length; i++ ) {
+			if ( String( list[ i ].id ) === String( id ) ) {
+				return list[ i ];
+			}
+		}
+		return null;
 	}
 
 	/**
@@ -56,12 +92,17 @@
 			return;
 		}
 
+		if ( ! config.series || ! config.series.length ) {
+			return;
+		}
+
 		var els = {
 			image: root.querySelector( '.neximan-main-image' ),
 			display: root.querySelector( '.neximan-sofa-display' ),
-			moduleTabs: root.querySelectorAll( '.neximan-module-tab' ),
-			layoutBtns: root.querySelectorAll( '.neximan-layout-btn' ),
-			colorSwatches: root.querySelectorAll( '.neximan-color-swatch' ),
+			seriesTabs: root.querySelector( '.neximan-series-tabs' ),
+			modelTabs: root.querySelector( '.neximan-model-tabs' ),
+			layouts: root.querySelector( '.neximan-layout-options' ),
+			colors: root.querySelector( '.neximan-color-options' ),
 			infoLayout: root.querySelector( '.neximan-info-layout' ),
 			infoModule: root.querySelector( '.neximan-info-module' ),
 			priceValue: root.querySelector( '.neximan-price-value' ),
@@ -69,56 +110,42 @@
 			feedback: root.querySelector( '.neximan-feedback' )
 		};
 
-		var state = {
-			module: config.defaults ? config.defaults.module : '',
-			layout: config.defaults ? config.defaults.layout : '',
-			color: config.defaults ? config.defaults.color : ''
-		};
+		var state = { seriesIndex: 0, modelId: '', layoutId: '', colorId: '' };
 
 		/**
-		 * Returns the layout key for a given slot for the active module, or '' if
-		 * the layout exists. Helper to pick a fallback layout when switching modules.
+		 * Returns the active series object.
 		 *
-		 * @return {void}
+		 * @return {Object} Active series.
 		 */
-		function ensureLayoutForModule() {
-			var module = config.modules[ state.module ];
-			if ( ! module ) {
-				return;
-			}
-
-			var current = config.layouts[ state.layout ];
-			if ( current && module.images[ current.slot ] ) {
-				return; // Current layout still valid for this module.
-			}
-
-			// Pick the first layout that has an image for this module.
-			var keys = Object.keys( config.layouts );
-			for ( var i = 0; i < keys.length; i++ ) {
-				var slot = config.layouts[ keys[ i ] ].slot;
-				if ( module.images[ slot ] ) {
-					state.layout = keys[ i ];
-					return;
-				}
-			}
+		function activeSeries() {
+			return config.series[ state.seriesIndex ];
 		}
 
 		/**
-		 * Calculates the current total price.
+		 * Returns the active model object.
+		 *
+		 * @return {Object|null} Active model.
+		 */
+		function activeModel() {
+			return byId( activeSeries().models, state.modelId );
+		}
+
+		/**
+		 * Calculates the current price.
 		 *
 		 * @return {number} Total price.
 		 */
 		function calcPrice() {
 			var total = 0;
-			var module = config.modules[ state.module ];
-			if ( module ) {
-				total += parseFloat( module.basePrice ) || 0;
+			var model = activeModel();
+			if ( model ) {
+				total += parseFloat( model.basePrice ) || 0;
+				var layout = byId( model.layouts, state.layoutId );
+				if ( layout ) {
+					total += parseFloat( layout.price ) || 0;
+				}
 			}
-			var layout = config.layouts[ state.layout ];
-			if ( layout ) {
-				total += parseFloat( layout.price ) || 0;
-			}
-			var color = config.colors[ state.color ];
+			var color = byId( activeSeries().colors, state.colorId );
 			if ( color ) {
 				total += parseFloat( color.price ) || 0;
 			}
@@ -126,101 +153,202 @@
 		}
 
 		/**
-		 * Shows/hides layout buttons depending on the active module's images.
+		 * Renders the preview image/color, info labels and price.
 		 *
 		 * @return {void}
 		 */
-		function syncLayoutButtons() {
-			var module = config.modules[ state.module ];
-			els.layoutBtns.forEach( function ( btn ) {
-				var key = btn.getAttribute( 'data-layout' );
-				var layout = config.layouts[ key ];
-				var hasImage = module && layout && module.images[ layout.slot ];
+		function renderPreview() {
+			var model = activeModel();
+			var layout = model ? byId( model.layouts, state.layoutId ) : null;
+			var color = byId( activeSeries().colors, state.colorId );
 
-				btn.classList.toggle( 'is-hidden', ! hasImage );
-				btn.classList.toggle( 'is-active', key === state.layout );
-			} );
-		}
-
-		/**
-		 * Renders the preview image, info text and price.
-		 *
-		 * @return {void}
-		 */
-		function render() {
-			var module = config.modules[ state.module ];
-			var layout = config.layouts[ state.layout ];
-			var color = config.colors[ state.color ];
-
-			if ( module && layout && module.images[ layout.slot ] && els.image && els.display ) {
-				var url = module.images[ layout.slot ];
-				els.image.src = url;
-				els.display.style.setProperty( '--nx-bg-image', 'url("' + url + '")' );
+			if ( layout && layout.image && els.image && els.display ) {
+				els.image.src = layout.image;
+				els.display.style.setProperty( '--nx-bg-image', 'url("' + layout.image + '")' );
 			}
-
 			if ( color && els.display ) {
 				els.display.style.setProperty( '--nx-sofa-color', color.value );
 			}
-
 			if ( els.infoLayout ) {
 				els.infoLayout.textContent = layout ? layout.label : '';
 			}
 			if ( els.infoModule ) {
-				els.infoModule.textContent = module ? module.name : '';
+				els.infoModule.textContent = model ? model.name : '';
 			}
-
 			if ( config.showPrice && els.priceValue ) {
 				els.priceValue.textContent = formatPrice( calcPrice(), config.currency );
 			}
 		}
 
-		// --- Events ---------------------------------------------------------
+		/**
+		 * Renders the layout buttons for the active model.
+		 *
+		 * @return {void}
+		 */
+		function renderLayouts() {
+			if ( ! els.layouts ) {
+				return;
+			}
+			els.layouts.innerHTML = '';
+			var model = activeModel();
+			if ( ! model ) {
+				return;
+			}
 
-		els.moduleTabs.forEach( function ( tab ) {
-			tab.addEventListener( 'click', function () {
-				els.moduleTabs.forEach( function ( t ) {
-					t.classList.remove( 'is-active' );
-				} );
-				tab.classList.add( 'is-active' );
-				state.module = tab.getAttribute( 'data-module' );
-				ensureLayoutForModule();
-				syncLayoutButtons();
-				render();
-			} );
-		} );
-
-		els.layoutBtns.forEach( function ( btn ) {
-			btn.addEventListener( 'click', function () {
-				state.layout = btn.getAttribute( 'data-layout' );
-				syncLayoutButtons();
-				render();
-			} );
-		} );
-
-		els.colorSwatches.forEach( function ( swatch ) {
-			swatch.addEventListener( 'click', function () {
-				els.colorSwatches.forEach( function ( s ) {
-					s.classList.remove( 'is-active' );
-				} );
-				swatch.classList.add( 'is-active' );
-				state.color = swatch.getAttribute( 'data-color' );
-				render();
-			} );
-		} );
-
-		if ( els.cta ) {
-			els.cta.addEventListener( 'click', function () {
-				var action = els.cta.getAttribute( 'data-action' );
-				if ( action === 'add_to_cart' || action === 'buy_now' ) {
-					addToCart( action === 'buy_now' );
+			model.layouts.forEach( function ( layout ) {
+				var btn = makeButton( 'neximan-layout-btn', layout.label, { 'data-layout': layout.id } );
+				if ( layout.id === state.layoutId ) {
+					btn.classList.add( 'is-active' );
 				}
+				btn.addEventListener( 'click', function () {
+					state.layoutId = layout.id;
+					markActive( els.layouts, 'neximan-layout-btn', btn );
+					renderPreview();
+				} );
+				els.layouts.appendChild( btn );
 			} );
 		}
 
 		/**
-		 * Sends the current selection to the server and adds it to the cart.
+		 * Renders the color swatches for the active series.
 		 *
-		 * @param {boolean} redirectToCheckout Whether to redirect to checkout after.
+		 * @return {void}
+		 */
+		function renderColors() {
+			if ( ! els.colors ) {
+				return;
+			}
+			els.colors.innerHTML = '';
+
+			activeSeries().colors.forEach( function ( color ) {
+				var btn = makeButton( 'neximan-color-swatch', '', {
+					'data-color': color.id,
+					title: color.name,
+					style: 'background-color:' + color.value
+				} );
+				if ( color.id === state.colorId ) {
+					btn.classList.add( 'is-active' );
+				}
+				btn.addEventListener( 'click', function () {
+					state.colorId = color.id;
+					markActive( els.colors, 'neximan-color-swatch', btn );
+					renderPreview();
+				} );
+				els.colors.appendChild( btn );
+			} );
+		}
+
+		/**
+		 * Renders the model tabs for the active series.
+		 *
+		 * @return {void}
+		 */
+		function renderModelTabs() {
+			if ( ! els.modelTabs ) {
+				return;
+			}
+			els.modelTabs.innerHTML = '';
+			var models = activeSeries().models;
+			var wrap = els.modelTabs.closest( '.neximan-model-tabs-wrap' );
+
+			if ( models.length <= 1 ) {
+				if ( wrap ) {
+					wrap.style.display = 'none';
+				}
+				return; // No tabs needed for a single model.
+			}
+			if ( wrap ) {
+				wrap.style.display = '';
+			}
+
+			models.forEach( function ( model ) {
+				var btn = makeButton( 'neximan-model-tab', model.name, { 'data-model': model.id } );
+				if ( model.id === state.modelId ) {
+					btn.classList.add( 'is-active' );
+				}
+				btn.addEventListener( 'click', function () {
+					selectModel( model.id );
+					markActive( els.modelTabs, 'neximan-model-tab', btn );
+				} );
+				els.modelTabs.appendChild( btn );
+			} );
+		}
+
+		/**
+		 * Renders the series tabs (only when more than one series).
+		 *
+		 * @return {void}
+		 */
+		function renderSeriesTabs() {
+			if ( ! els.seriesTabs ) {
+				return;
+			}
+			els.seriesTabs.innerHTML = '';
+			if ( config.series.length <= 1 ) {
+				return;
+			}
+
+			config.series.forEach( function ( series, index ) {
+				var btn = makeButton( 'neximan-series-tab', series.name || ( '#' + ( index + 1 ) ), { 'data-series': index } );
+				if ( index === state.seriesIndex ) {
+					btn.classList.add( 'is-active' );
+				}
+				btn.addEventListener( 'click', function () {
+					selectSeries( index );
+					markActive( els.seriesTabs, 'neximan-series-tab', btn );
+				} );
+				els.seriesTabs.appendChild( btn );
+			} );
+		}
+
+		/**
+		 * Toggles the active class within a container.
+		 *
+		 * @param {HTMLElement} container Wrapper.
+		 * @param {string}      cls       Item class.
+		 * @param {HTMLElement} active    Element to activate.
+		 * @return {void}
+		 */
+		function markActive( container, cls, active ) {
+			container.querySelectorAll( '.' + cls ).forEach( function ( el ) {
+				el.classList.remove( 'is-active' );
+			} );
+			active.classList.add( 'is-active' );
+		}
+
+		/**
+		 * Selects a model and resets the layout to its first option.
+		 *
+		 * @param {string} modelId Model id.
+		 * @return {void}
+		 */
+		function selectModel( modelId ) {
+			state.modelId = modelId;
+			var model = activeModel();
+			state.layoutId = ( model && model.layouts.length ) ? model.layouts[ 0 ].id : '';
+			renderLayouts();
+			renderPreview();
+		}
+
+		/**
+		 * Selects a series and resets model/color defaults.
+		 *
+		 * @param {number} index Series index.
+		 * @return {void}
+		 */
+		function selectSeries( index ) {
+			state.seriesIndex = index;
+			var series = activeSeries();
+			state.colorId = series.colors.length ? series.colors[ 0 ].id : '';
+			renderModelTabs();
+			renderColors();
+			selectModel( series.models.length ? series.models[ 0 ].id : '' );
+		}
+
+		/**
+		 * Sends the current selection to the server to add it to the cart.
+		 *
+		 * @param {boolean} redirectToCheckout Redirect after adding.
 		 * @return {void}
 		 */
 		function addToCart( redirectToCheckout ) {
@@ -232,14 +360,17 @@
 			els.cta.classList.add( 'is-loading' );
 			setFeedback( ( settings.i18n && settings.i18n.adding ) || 'Adding...', '' );
 
+			var series = activeSeries();
 			var body = new URLSearchParams();
 			body.append( 'action', 'neximan_add_to_cart' );
 			body.append( 'nonce', settings.nonce );
+			body.append( 'source', config.source || 'inline' );
 			body.append( 'post_id', root.getAttribute( 'data-post-id' ) || '' );
 			body.append( 'widget_id', root.getAttribute( 'data-widget-id' ) || '' );
-			body.append( 'module', state.module );
-			body.append( 'layout', state.layout );
-			body.append( 'color', state.color );
+			body.append( 'series_post_id', series.postId || 0 );
+			body.append( 'model', state.modelId );
+			body.append( 'layout', state.layoutId );
+			body.append( 'color', state.colorId );
 
 			fetch( settings.ajaxUrl, {
 				method: 'POST',
@@ -254,7 +385,7 @@
 					els.cta.classList.remove( 'is-loading' );
 
 					if ( ! json || ! json.success ) {
-						var msg = json && json.data && json.data.message ? json.data.message : ( settings.i18n && settings.i18n.error );
+						var msg = ( json && json.data && json.data.message ) || ( settings.i18n && settings.i18n.error );
 						setFeedback( msg, 'error' );
 						return;
 					}
@@ -280,9 +411,9 @@
 		/**
 		 * Updates the feedback area.
 		 *
-		 * @param {string} text     Message text.
+		 * @param {string} text     Message.
 		 * @param {string} type     '', 'success' or 'error'.
-		 * @param {string} htmlLink Optional trailing HTML (already escaped).
+		 * @param {string} htmlLink Optional trailing HTML.
 		 * @return {void}
 		 */
 		function setFeedback( text, type, htmlLink ) {
@@ -293,20 +424,18 @@
 			els.feedback.innerHTML = ( text || '' ) + ( htmlLink || '' );
 		}
 
-		// --- Initial render -------------------------------------------------
-
-		ensureLayoutForModule();
-		syncLayoutButtons();
-
-		if ( els.colorSwatches.length ) {
-			var activeColor = root.querySelector( '.neximan-color-swatch[data-color="' + state.color + '"]' );
-			( activeColor || els.colorSwatches[ 0 ] ).classList.add( 'is-active' );
-			if ( ! activeColor ) {
-				state.color = els.colorSwatches[ 0 ].getAttribute( 'data-color' );
-			}
+		if ( els.cta ) {
+			els.cta.addEventListener( 'click', function () {
+				var action = els.cta.getAttribute( 'data-action' );
+				if ( action === 'add_to_cart' || action === 'buy_now' ) {
+					addToCart( action === 'buy_now' );
+				}
+			} );
 		}
 
-		render();
+		// Initial render.
+		renderSeriesTabs();
+		selectSeries( 0 );
 	}
 
 	/**
@@ -315,8 +444,7 @@
 	 * @return {void}
 	 */
 	function initAll() {
-		var builders = document.querySelectorAll( '[data-neximan-builder]' );
-		builders.forEach( initBuilder );
+		document.querySelectorAll( '[data-neximan-builder]' ).forEach( initBuilder );
 	}
 
 	if ( document.readyState === 'loading' ) {

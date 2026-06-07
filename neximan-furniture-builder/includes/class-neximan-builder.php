@@ -33,6 +33,13 @@ final class Plugin {
 	public $woocommerce = null;
 
 	/**
+	 * Custom post type handler instance.
+	 *
+	 * @var CPT|null
+	 */
+	public $cpt = null;
+
+	/**
 	 * Returns the singleton instance.
 	 *
 	 * @return Plugin
@@ -59,7 +66,14 @@ final class Plugin {
 		add_action( 'elementor/frontend/after_register_styles', array( $this, 'register_styles' ) );
 
 		// WooCommerce bridge (cart / order item data, AJAX handlers).
+		require_once NEXIMAN_BUILDER_PATH . 'includes/class-neximan-config.php';
+		require_once NEXIMAN_BUILDER_PATH . 'includes/class-neximan-cpt.php';
 		require_once NEXIMAN_BUILDER_PATH . 'includes/class-neximan-woocommerce.php';
+
+		// Register the "series" custom post type and its admin UI.
+		$this->cpt = new CPT();
+		$this->cpt->register();
+
 		$this->woocommerce = new WooCommerce();
 		$this->woocommerce->register();
 	}
