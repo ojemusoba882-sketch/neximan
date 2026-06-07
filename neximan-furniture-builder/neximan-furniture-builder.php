@@ -54,6 +54,154 @@ function neximan_builder_bootstrap() {
 add_action( 'plugins_loaded', 'neximan_builder_bootstrap' );
 
 /**
+ * On activation, seed a ready-to-edit sample "Builder" so admins immediately
+ * see how to add multiple product types (sofa + table) with their own layouts
+ * and a size option group.
+ *
+ * @return void
+ */
+function neximan_builder_activate() {
+	require_once NEXIMAN_BUILDER_PATH . 'includes/class-neximan-config.php';
+
+	$existing = get_posts(
+		array(
+			'post_type'      => \Neximan\Builder\Config::POST_TYPE,
+			'post_status'    => 'any',
+			'posts_per_page' => 1,
+			'fields'         => 'ids',
+		)
+	);
+
+	if ( ! empty( $existing ) ) {
+		return; // Don't override an existing setup.
+	}
+
+	$config = array(
+		'wooProductId' => 0,
+		'priceMode'    => 'dynamic',
+		'varAttrs'     => array(
+			'layout' => '',
+			'color'  => '',
+		),
+		'colors'       => array(
+			array(
+				'id'    => 'cblack',
+				'name'  => 'مشکی',
+				'value' => '#4a4a4a',
+				'price' => 0,
+			),
+			array(
+				'id'    => 'cgreen',
+				'name'  => 'سبز',
+				'value' => '#9bb89b',
+				'price' => 0,
+			),
+			array(
+				'id'    => 'ccream',
+				'name'  => 'کرم',
+				'value' => '#f0e6d6',
+				'price' => 0,
+			),
+			array(
+				'id'    => 'choney',
+				'name'  => 'عسلی',
+				'value' => '#e9b576',
+				'price' => 0,
+			),
+		),
+		'options'      => array(
+			array(
+				'id'      => 'gsize',
+				'label'   => 'سایز',
+				'varAttr' => '',
+				'choices' => array(
+					array(
+						'id'    => 's75',
+						'name'  => '۷۵ سانت',
+						'price' => 0,
+					),
+					array(
+						'id'    => 's90',
+						'name'  => '۹۰ سانت',
+						'price' => 500000,
+					),
+				),
+			),
+		),
+		'models'       => array(
+			array(
+				'id'        => 'msofa',
+				'name'      => 'مبل',
+				'type'      => 'sofa',
+				'basePrice' => 8000000,
+				'wooId'     => 0,
+				'layouts'   => array(
+					array(
+						'id'    => 'l2',
+						'label' => '۲ نفره',
+						'image' => '',
+						'price' => 0,
+					),
+					array(
+						'id'    => 'l3',
+						'label' => '۳ نفره',
+						'image' => '',
+						'price' => 1500000,
+					),
+					array(
+						'id'    => 'l4',
+						'label' => '۴ نفره',
+						'image' => '',
+						'price' => 3000000,
+					),
+					array(
+						'id'    => 'll',
+						'label' => 'L شکل',
+						'image' => '',
+						'price' => 4500000,
+					),
+				),
+			),
+			array(
+				'id'        => 'mtable',
+				'name'      => 'میز',
+				'type'      => 'table',
+				'basePrice' => 2000000,
+				'wooId'     => 0,
+				'layouts'   => array(
+					array(
+						'id'    => 'tround',
+						'label' => 'گرد',
+						'image' => '',
+						'price' => 0,
+					),
+					array(
+						'id'    => 'trect',
+						'label' => 'مستطیل',
+						'image' => '',
+						'price' => 500000,
+					),
+				),
+			),
+		),
+	);
+
+	$clean   = \Neximan\Builder\Config::sanitize( $config );
+	$post_id = wp_insert_post(
+		array(
+			'post_type'   => \Neximan\Builder\Config::POST_TYPE,
+			'post_title'  => 'نوا (نمونه)',
+			'post_status' => 'publish',
+		)
+	);
+
+	if ( $post_id && ! is_wp_error( $post_id ) ) {
+		update_post_meta( $post_id, \Neximan\Builder\Config::META_KEY, wp_json_encode( $clean ) );
+	}
+}
+register_activation_hook( __FILE__, 'neximan_builder_activate' );
+
+/**
  * Admin notice: Elementor is not installed/active.
  *
  * @return void
