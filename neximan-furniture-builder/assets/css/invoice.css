@@ -1,71 +1,326 @@
 /**
- * Neximan Furniture Builder - invoice styling for cart / checkout / order pages.
+ * Neximan Furniture Builder - invoice styles.
  *
- * Turns the WooCommerce line-item meta of builder products into a clean,
- * modern invoice block.
+ * 1) Custom invoice block ([neximan_invoice] / Invoice widget) - fully themed.
+ * 2) Light styling for the configuration meta on the native WooCommerce
+ *    cart / checkout / order tables.
  */
 
-/* Title of a builder line item */
+/* ============================================================= *
+ * Custom invoice block
+ * ============================================================= */
+
+.neximan-invoice {
+	--nx-inv-accent: #10b981;
+	--nx-inv-accent-2: #0e9f74;
+	--nx-inv-dark: #1f2a37;
+	--nx-inv-text: #4a5568;
+	--nx-inv-card: #ffffff;
+	--nx-inv-bg: #f3f6f5;
+	--nx-inv-border: #e6efea;
+	--nx-inv-radius: 18px;
+
+	direction: rtl;
+	text-align: right;
+	background: var(--nx-inv-bg);
+	border-radius: var(--nx-inv-radius);
+	padding: clamp(1rem, 3vw, 2rem);
+	max-width: 760px;
+	margin: 0 auto;
+	color: var(--nx-inv-text);
+	font-family: inherit;
+	box-shadow: 0 24px 60px rgba(16, 24, 40, 0.08);
+	box-sizing: border-box;
+}
+
+.neximan-invoice *,
+.neximan-invoice *::before,
+.neximan-invoice *::after {
+	box-sizing: border-box;
+}
+
+/* Header */
+.neximan-invoice-head {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 1rem;
+	margin-bottom: 1.25rem;
+	padding-bottom: 1rem;
+	border-bottom: 2px dashed var(--nx-inv-border);
+}
+
 .neximan-invoice-title {
+	margin: 0;
+	font-size: clamp(1.3rem, 3vw, 1.8rem);
+	font-weight: 800;
+	color: var(--nx-inv-dark);
+}
+
+.neximan-invoice-subtitle {
+	margin: 0.25rem 0 0;
+	font-size: 0.9rem;
+	opacity: 0.8;
+}
+
+.neximan-invoice-logo {
+	font-weight: 800;
+	color: var(--nx-inv-accent);
+	font-size: 1.05rem;
+	white-space: nowrap;
+}
+
+/* Items list */
+.neximan-invoice-list {
+	display: flex;
+	flex-direction: column;
+	gap: 0.85rem;
+}
+
+.neximan-invoice-item {
+	display: flex;
+	gap: 1rem;
+	align-items: stretch;
+	background: var(--nx-inv-card);
+	border: 1px solid var(--nx-inv-border);
+	border-radius: calc(var(--nx-inv-radius) - 6px);
+	padding: 0.9rem;
+	position: relative;
+	overflow: hidden;
+}
+
+.neximan-invoice-item::before {
+	content: "";
+	position: absolute;
+	inset-inline-start: 0;
+	top: 0;
+	bottom: 0;
+	width: 5px;
+	background: linear-gradient(var(--nx-inv-accent), var(--nx-inv-accent-2));
+}
+
+.neximan-invoice-thumb {
+	flex: 0 0 auto;
+	width: 84px;
+	height: 84px;
+	border-radius: 12px;
+	overflow: hidden;
+	background: var(--nx-inv-bg);
+}
+
+.neximan-invoice-thumb img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+}
+
+.neximan-invoice-body {
+	flex: 1;
+	min-width: 0;
+}
+
+.neximan-invoice-name {
+	font-weight: 800;
+	color: var(--nx-inv-dark);
+	font-size: 1.05rem;
+	margin-bottom: 0.5rem;
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	flex-wrap: wrap;
+}
+
+.neximan-invoice-badge {
+	font-size: 0.7rem;
+	font-weight: 700;
+	color: var(--nx-inv-accent-2);
+	background: rgba(16, 185, 129, 0.12);
+	border: 1px solid rgba(16, 185, 129, 0.25);
+	padding: 2px 8px;
+	border-radius: 999px;
+}
+
+.neximan-invoice-specs {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+	gap: 4px 14px;
+}
+
+.neximan-invoice-spec {
+	display: flex;
+	align-items: baseline;
+	gap: 6px;
+	font-size: 0.85rem;
+}
+
+.neximan-invoice-spec-k {
+	color: #8a94a6;
+	font-weight: 600;
+}
+
+.neximan-invoice-spec-k::after {
+	content: ":";
+}
+
+.neximan-invoice-spec-v {
+	color: var(--nx-inv-dark);
 	font-weight: 700;
 }
 
-/* The configuration meta (Series / Model / Layout / Color / options) */
+.neximan-invoice-meta {
+	flex: 0 0 auto;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 0.5rem;
+	min-width: 120px;
+	text-align: left;
+	direction: ltr;
+}
+
+.neximan-invoice-qty {
+	font-size: 0.8rem;
+	color: #8a94a6;
+	direction: rtl;
+}
+
+.neximan-invoice-line {
+	font-weight: 800;
+	color: var(--nx-inv-dark);
+	font-size: 1.05rem;
+}
+
+/* Totals */
+.neximan-invoice-totals {
+	margin-top: 1.25rem;
+	padding: 1rem 1.1rem;
+	background: var(--nx-inv-card);
+	border: 1px solid var(--nx-inv-border);
+	border-radius: calc(var(--nx-inv-radius) - 6px);
+}
+
+.neximan-invoice-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0.35rem 0;
+	font-size: 0.95rem;
+}
+
+.neximan-invoice-amount {
+	direction: ltr;
+	unicode-bidi: isolate;
+	font-weight: 700;
+	color: var(--nx-inv-dark);
+}
+
+.neximan-invoice-row--grand {
+	margin-top: 0.4rem;
+	padding-top: 0.8rem;
+	border-top: 2px solid var(--nx-inv-border);
+	font-size: 1.2rem;
+	font-weight: 800;
+	color: var(--nx-inv-dark);
+}
+
+.neximan-invoice-row--grand .neximan-invoice-amount {
+	color: var(--nx-inv-accent-2);
+	font-size: 1.3rem;
+}
+
+/* Actions */
+.neximan-invoice-actions {
+	margin-top: 1.25rem;
+	text-align: center;
+}
+
+.neximan-invoice-btn {
+	display: inline-block;
+	width: 100%;
+	padding: 15px 24px;
+	background: linear-gradient(135deg, var(--nx-inv-accent), var(--nx-inv-accent-2));
+	color: #fff;
+	border: none;
+	border-radius: 12px;
+	font-size: 1.1rem;
+	font-weight: 800;
+	text-decoration: none;
+	transition: transform 0.15s ease, box-shadow 0.15s ease;
+	box-shadow: 0 10px 24px rgba(16, 185, 129, 0.3);
+}
+
+.neximan-invoice-btn:hover {
+	transform: translateY(-1px);
+	box-shadow: 0 14px 30px rgba(16, 185, 129, 0.38);
+	color: #fff;
+}
+
+.neximan-invoice-btn--ghost {
+	width: auto;
+	background: transparent;
+	color: var(--nx-inv-accent-2);
+	border: 2px solid var(--nx-inv-accent);
+	box-shadow: none;
+}
+
+/* Empty state */
+.neximan-invoice--empty {
+	text-align: center;
+	padding: 3rem 1.5rem;
+}
+
+.neximan-invoice-emptyicon {
+	font-size: 3rem;
+	margin-bottom: 0.5rem;
+}
+
+@media (max-width: 600px) {
+	.neximan-invoice-item {
+		flex-wrap: wrap;
+	}
+	.neximan-invoice-meta {
+		flex-direction: row;
+		width: 100%;
+		justify-content: space-between;
+		border-top: 1px dashed var(--nx-inv-border);
+		padding-top: 0.6rem;
+	}
+}
+
+/* ============================================================= *
+ * Native WooCommerce cart / checkout / order meta (light touch)
+ * ============================================================= */
+
+.neximan-invoice-title { font-weight: 700; }
+
 .woocommerce td.product-name dl.variation,
 .woocommerce .order_details dl.variation,
 .woocommerce-checkout-review-order-table dl.variation,
 .woocommerce-table--order-details dl.variation,
 ul.wc-item-meta {
 	margin: 0.6rem 0 0;
-	padding: 0.75rem 0.9rem;
+	padding: 0.7rem 0.9rem;
 	background: #f6faf8;
 	border: 1px solid #e2ece7;
+	border-top: 3px solid #10b981;
 	border-radius: 10px;
 	font-size: 0.86rem;
 	line-height: 1.7;
 	list-style: none;
-	display: grid;
-	grid-template-columns: auto 1fr;
-	gap: 2px 12px;
 }
 
 .woocommerce dl.variation dt,
 ul.wc-item-meta li strong {
 	font-weight: 700;
-	color: #2c3e50;
-	margin: 0;
-	padding: 0;
-	float: none;
+	color: #1f2a37;
 }
 
-.woocommerce dl.variation dd,
 ul.wc-item-meta li {
 	margin: 0;
-	padding: 0;
 	color: #4a5568;
 }
 
-ul.wc-item-meta li {
-	display: contents;
-}
-
-ul.wc-item-meta li p {
-	margin: 0;
-	display: inline;
-}
-
-/* Accent line above the configuration block to feel like a receipt */
-.woocommerce td.product-name dl.variation {
-	border-top: 3px solid #10b981;
-}
-
-/* Tidy thumbnails in the checkout review */
-.woocommerce-checkout-review-order-table .product-name {
-	line-height: 1.5;
-}
-
-/* RTL-friendly */
 .rtl .woocommerce dl.variation,
-.rtl ul.wc-item-meta {
-	text-align: right;
-}
+.rtl ul.wc-item-meta { text-align: right; }

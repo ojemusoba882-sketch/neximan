@@ -3,7 +3,7 @@
  * Plugin Name: Neximan Furniture Builder
  * Plugin URI:  https://github.com/ojemusoba882-sketch/neximan
  * Description: A standalone Elementor widget to build configurable furniture (sofas, tables, ...) with dynamic pricing and WooCommerce cart/checkout integration.
- * Version:     1.6.1
+ * Version:     1.7.0
  * Author:      Neximan
  * Text Domain: neximan-builder
  * Domain Path: /languages
@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit; // No direct access.
 }
 
-define( 'NEXIMAN_BUILDER_VERSION', '1.6.1' );
+define( 'NEXIMAN_BUILDER_VERSION', '1.7.0' );
 define( 'NEXIMAN_BUILDER_FILE', __FILE__ );
 define( 'NEXIMAN_BUILDER_PATH', plugin_dir_path( __FILE__ ) );
 define( 'NEXIMAN_BUILDER_URL', plugin_dir_url( __FILE__ ) );

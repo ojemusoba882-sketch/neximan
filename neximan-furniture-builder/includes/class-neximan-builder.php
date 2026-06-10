@@ -40,6 +40,13 @@ final class Plugin {
 	public $cpt = null;
 
 	/**
+	 * Invoice renderer instance.
+	 *
+	 * @var Invoice|null
+	 */
+	public $invoice = null;
+
+	/**
 	 * Returns the singleton instance.
 	 *
 	 * @return Plugin
@@ -72,6 +79,7 @@ final class Plugin {
 		require_once NEXIMAN_BUILDER_PATH . 'includes/class-neximan-config.php';
 		require_once NEXIMAN_BUILDER_PATH . 'includes/class-neximan-cpt.php';
 		require_once NEXIMAN_BUILDER_PATH . 'includes/class-neximan-woocommerce.php';
+		require_once NEXIMAN_BUILDER_PATH . 'includes/class-neximan-invoice.php';
 
 		// Register the "series" custom post type and its admin UI.
 		$this->cpt = new CPT();
@@ -79,6 +87,10 @@ final class Plugin {
 
 		$this->woocommerce = new WooCommerce();
 		$this->woocommerce->register();
+
+		// Custom invoice (shortcode + assets).
+		$this->invoice = new Invoice();
+		$this->invoice->register();
 	}
 
 	/**
@@ -105,7 +117,9 @@ final class Plugin {
 	 */
 	public function register_widgets( $widgets_manager ) {
 		require_once NEXIMAN_BUILDER_PATH . 'widgets/class-neximan-builder-widget.php';
+		require_once NEXIMAN_BUILDER_PATH . 'widgets/class-neximan-invoice-widget.php';
 		$widgets_manager->register( new Widgets\Builder_Widget() );
+		$widgets_manager->register( new Widgets\Invoice_Widget() );
 	}
 
 	/**
@@ -164,12 +178,7 @@ final class Plugin {
 		}
 
 		if ( is_cart() || is_checkout() || is_account_page() || is_wc_endpoint_url( 'order-received' ) || is_wc_endpoint_url( 'view-order' ) ) {
-			wp_enqueue_style(
-				'neximan-invoice',
-				NEXIMAN_BUILDER_URL . 'assets/css/invoice.css',
-				array(),
-				NEXIMAN_BUILDER_VERSION
-			);
+			wp_enqueue_style( 'neximan-invoice' );
 		}
 	}
 }
