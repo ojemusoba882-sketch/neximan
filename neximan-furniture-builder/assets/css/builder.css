@@ -121,7 +121,7 @@
 	background: linear-gradient(135deg, var(--nx-preview-1), var(--nx-preview-2));
 	border-radius: 30px;
 	padding: 2rem;
-	min-height: 500px;
+	min-height: 360px;
 	position: relative;
 	display: flex;
 	align-items: center;

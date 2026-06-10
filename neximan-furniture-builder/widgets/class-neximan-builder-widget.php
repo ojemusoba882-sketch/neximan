@@ -634,8 +634,8 @@ class Builder_Widget extends Widget_Base {
 				'fields'      => $repeater->get_controls(),
 				'title_field' => '{{{ choice_name }}}',
 				'default'     => array(
-					array( 'choice_name' => __( '۷۵ سانت', 'neximan-builder' ) ),
-					array( 'choice_name' => __( '۹۰ سانت', 'neximan-builder' ) ),
+					array( 'choice_name' => __( '۶۰ سانت', 'neximan-builder' ) ),
+					array( 'choice_name' => __( '۸۵ سانت', 'neximan-builder' ) ),
 				),
 			)
 		);
