@@ -65,6 +65,9 @@ final class Plugin {
 		add_action( 'elementor/frontend/after_register_scripts', array( $this, 'register_scripts' ) );
 		add_action( 'elementor/frontend/after_register_styles', array( $this, 'register_styles' ) );
 
+		// Invoice styles on WooCommerce pages (cart, checkout, order).
+		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_invoice_styles' ) );
+
 		// WooCommerce bridge (cart / order item data, AJAX handlers).
 		require_once NEXIMAN_BUILDER_PATH . 'includes/class-neximan-config.php';
 		require_once NEXIMAN_BUILDER_PATH . 'includes/class-neximan-cpt.php';
@@ -148,5 +151,25 @@ final class Plugin {
 			array(),
 			NEXIMAN_BUILDER_VERSION
 		);
+	}
+
+	/**
+	 * Enqueues the invoice styles on WooCommerce cart / checkout / order pages.
+	 *
+	 * @return void
+	 */
+	public function enqueue_invoice_styles() {
+		if ( ! function_exists( 'is_cart' ) ) {
+			return;
+		}
+
+		if ( is_cart() || is_checkout() || is_account_page() || is_wc_endpoint_url( 'order-received' ) || is_wc_endpoint_url( 'view-order' ) ) {
+			wp_enqueue_style(
+				'neximan-invoice',
+				NEXIMAN_BUILDER_URL . 'assets/css/invoice.css',
+				array(),
+				NEXIMAN_BUILDER_VERSION
+			);
+		}
 	}
 }

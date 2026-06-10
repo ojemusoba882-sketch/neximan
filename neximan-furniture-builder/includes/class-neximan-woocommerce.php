@@ -52,6 +52,87 @@ class WooCommerce {
 		add_action( 'woocommerce_before_calculate_totals', array( $this, 'apply_dynamic_price' ), 20, 1 );
 		add_filter( 'woocommerce_get_item_data', array( $this, 'display_cart_item_data' ), 10, 2 );
 		add_action( 'woocommerce_checkout_create_order_line_item', array( $this, 'add_order_item_meta' ), 10, 4 );
+
+		// Keep builder products purchasable on every request (not just AJAX), so
+		// dynamically-priced items are not dropped from the cart on cart/checkout.
+		add_filter( 'woocommerce_is_purchasable', array( $this, 'keep_builder_purchasable' ), 99, 2 );
+		add_filter( 'woocommerce_variation_is_purchasable', array( $this, 'keep_builder_purchasable' ), 99, 2 );
+
+		// Tag builder cart lines and order item meta with a CSS class wrapper so
+		// the configuration renders as a styled invoice block.
+		add_filter( 'woocommerce_cart_item_name', array( $this, 'tag_cart_item_name' ), 10, 3 );
+	}
+
+	/**
+	 * Wraps the cart item name with a marker class so the invoice CSS can target
+	 * builder lines specifically (purely cosmetic).
+	 *
+	 * @param string $name      Product name HTML.
+	 * @param array  $cart_item Cart item.
+	 * @param string $cart_item_key Cart item key.
+	 * @return string
+	 */
+	public function tag_cart_item_name( $name, $cart_item, $cart_item_key ) {
+		unset( $cart_item_key );
+
+		if ( empty( $cart_item[ self::CART_KEY ] ) ) {
+			return $name;
+		}
+
+		return '<span class="neximan-invoice-title">' . $name . '</span>';
+	}
+
+	/**
+	 * Returns the set of product/variation IDs currently in the cart as builder
+	 * items, so they can be kept purchasable across page loads.
+	 *
+	 * @return int[]
+	 */
+	private function builder_cart_product_ids() {
+		$ids = array();
+
+		if ( ! function_exists( 'WC' ) || is_null( WC()->cart ) ) {
+			return $ids;
+		}
+
+		foreach ( WC()->cart->get_cart() as $cart_item ) {
+			if ( empty( $cart_item[ self::CART_KEY ] ) ) {
+				continue;
+			}
+			if ( ! empty( $cart_item['product_id'] ) ) {
+				$ids[] = (int) $cart_item['product_id'];
+			}
+			if ( ! empty( $cart_item['variation_id'] ) ) {
+				$ids[] = (int) $cart_item['variation_id'];
+			}
+		}
+
+		return $ids;
+	}
+
+	/**
+	 * Forces products that are present in the cart as builder items to stay
+	 * purchasable, preventing WooCommerce from removing dynamically-priced lines.
+	 *
+	 * @param bool        $purchasable Current state.
+	 * @param \WC_Product $product     Product object.
+	 * @return bool
+	 */
+	public function keep_builder_purchasable( $purchasable, $product ) {
+		if ( $purchasable || ! is_object( $product ) ) {
+			return $purchasable;
+		}
+
+		$ids = $this->builder_cart_product_ids();
+		if ( empty( $ids ) ) {
+			return $purchasable;
+		}
+
+		if ( in_array( (int) $product->get_id(), $ids, true ) || in_array( (int) $product->get_parent_id(), $ids, true ) ) {
+			return true;
+		}
+
+		return $purchasable;
 	}
 
 	/**

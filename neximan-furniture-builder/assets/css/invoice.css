@@ -1,0 +1,71 @@
+/**
+ * Neximan Furniture Builder - invoice styling for cart / checkout / order pages.
+ *
+ * Turns the WooCommerce line-item meta of builder products into a clean,
+ * modern invoice block.
+ */
+
+/* Title of a builder line item */
+.neximan-invoice-title {
+	font-weight: 700;
+}
+
+/* The configuration meta (Series / Model / Layout / Color / options) */
+.woocommerce td.product-name dl.variation,
+.woocommerce .order_details dl.variation,
+.woocommerce-checkout-review-order-table dl.variation,
+.woocommerce-table--order-details dl.variation,
+ul.wc-item-meta {
+	margin: 0.6rem 0 0;
+	padding: 0.75rem 0.9rem;
+	background: #f6faf8;
+	border: 1px solid #e2ece7;
+	border-radius: 10px;
+	font-size: 0.86rem;
+	line-height: 1.7;
+	list-style: none;
+	display: grid;
+	grid-template-columns: auto 1fr;
+	gap: 2px 12px;
+}
+
+.woocommerce dl.variation dt,
+ul.wc-item-meta li strong {
+	font-weight: 700;
+	color: #2c3e50;
+	margin: 0;
+	padding: 0;
+	float: none;
+}
+
+.woocommerce dl.variation dd,
+ul.wc-item-meta li {
+	margin: 0;
+	padding: 0;
+	color: #4a5568;
+}
+
+ul.wc-item-meta li {
+	display: contents;
+}
+
+ul.wc-item-meta li p {
+	margin: 0;
+	display: inline;
+}
+
+/* Accent line above the configuration block to feel like a receipt */
+.woocommerce td.product-name dl.variation {
+	border-top: 3px solid #10b981;
+}
+
+/* Tidy thumbnails in the checkout review */
+.woocommerce-checkout-review-order-table .product-name {
+	line-height: 1.5;
+}
+
+/* RTL-friendly */
+.rtl .woocommerce dl.variation,
+.rtl ul.wc-item-meta {
+	text-align: right;
+}
