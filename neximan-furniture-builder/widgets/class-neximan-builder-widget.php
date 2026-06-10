@@ -134,12 +134,22 @@ class Builder_Widget extends Widget_Base {
 			array(
 				'label'       => __( 'Data Source', 'neximan-builder' ),
 				'type'        => Controls_Manager::SELECT,
-				'default'     => 'inline',
+				'default'     => 'posts',
 				'options'     => array(
 					'inline' => __( 'Inline (simple / fixed)', 'neximan-builder' ),
 					'posts'  => __( 'Builder Posts (unlimited / multiple products)', 'neximan-builder' ),
 				),
 				'description' => __( 'Inline: configure everything here. Builder Posts: select one or more "Neximan Builder" series (e.g. Noah, Melorin), each a parent product with unlimited models & layouts.', 'neximan-builder' ),
+			)
+		);
+
+		$this->add_control(
+			'inline_notice',
+			array(
+				'type'            => Controls_Manager::RAW_HTML,
+				'raw'             => __( 'Tables, accessories (modules), real sizes (60/85) and the live assembly preview are only available in <strong>Builder Posts</strong> mode. Switch Data Source to "Builder Posts", then manage products under the <strong>Neximan Builders</strong> menu.', 'neximan-builder' ),
+				'content_classes' => 'elementor-panel-alert elementor-panel-alert-info',
+				'condition'       => array( 'data_source' => 'inline' ),
 			)
 		);
 
