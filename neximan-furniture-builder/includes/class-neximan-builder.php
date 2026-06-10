@@ -47,6 +47,13 @@ final class Plugin {
 	public $invoice = null;
 
 	/**
+	 * Settings page instance.
+	 *
+	 * @var Settings|null
+	 */
+	public $settings = null;
+
+	/**
 	 * Returns the singleton instance.
 	 *
 	 * @return Plugin
@@ -80,6 +87,7 @@ final class Plugin {
 		require_once NEXIMAN_BUILDER_PATH . 'includes/class-neximan-cpt.php';
 		require_once NEXIMAN_BUILDER_PATH . 'includes/class-neximan-woocommerce.php';
 		require_once NEXIMAN_BUILDER_PATH . 'includes/class-neximan-invoice.php';
+		require_once NEXIMAN_BUILDER_PATH . 'includes/class-neximan-settings.php';
 
 		// Register the "series" custom post type and its admin UI.
 		$this->cpt = new CPT();
@@ -91,6 +99,11 @@ final class Plugin {
 		// Custom invoice (shortcode + assets).
 		$this->invoice = new Invoice();
 		$this->invoice->register();
+
+		// Admin settings page for the invoice.
+		$this->settings = new Settings();
+		$this->settings->register();
+		add_action( 'admin_enqueue_scripts', array( $this->settings, 'admin_assets' ) );
 	}
 
 	/**

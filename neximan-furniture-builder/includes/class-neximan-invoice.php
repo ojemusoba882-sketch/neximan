@@ -29,6 +29,45 @@ class Invoice {
 	public function register() {
 		add_shortcode( 'neximan_invoice', array( $this, 'shortcode' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'register_assets' ), 5 );
+
+		// Optionally replace the WooCommerce cart page content with our invoice.
+		add_action( 'template_redirect', array( $this, 'maybe_replace_cart' ) );
+	}
+
+	/**
+	 * When enabled in settings, replaces the WooCommerce Cart page content with
+	 * the custom invoice (the page itself stays, only its body is swapped).
+	 *
+	 * @return void
+	 */
+	public function maybe_replace_cart() {
+		if ( ! function_exists( 'is_cart' ) || ! is_cart() ) {
+			return;
+		}
+
+		$settings = class_exists( __NAMESPACE__ . '\\Settings' ) ? Settings::get() : array();
+		if ( empty( $settings['replace_cart'] ) || 'yes' !== $settings['replace_cart'] ) {
+			return;
+		}
+
+		add_filter( 'the_content', array( $this, 'replace_cart_content' ), 5 );
+	}
+
+	/**
+	 * Swaps the cart page content for the invoice.
+	 *
+	 * @param string $content Original content.
+	 * @return string
+	 */
+	public function replace_cart_content( $content ) {
+		// Only replace once, on the main cart page query.
+		if ( ! is_main_query() || ! in_the_loop() ) {
+			return $content;
+		}
+
+		remove_filter( 'the_content', array( $this, 'replace_cart_content' ), 5 );
+
+		return self::render();
 	}
 
 	/**
@@ -106,13 +145,19 @@ class Invoice {
 	public static function render( $labels = array() ) {
 		wp_enqueue_style( 'neximan-invoice' );
 
-		$l = array_merge( self::default_labels(), is_array( $labels ) ? $labels : array() );
+		// Base = dashboard settings (if available) so the shortcode/widget and the
+		// cart replacement all share one global configuration; passed $labels win.
+		$base = class_exists( __NAMESPACE__ . '\\Settings' ) ? Settings::get() : self::default_labels();
+		$l    = array_merge( $base, is_array( $labels ) ? $labels : array() );
 
 		$show_checkout = ! isset( $l['show_checkout'] ) || 'no' !== $l['show_checkout'];
 		$show_images   = ! isset( $l['show_images'] ) || 'no' !== $l['show_images'];
 
+		// Inline CSS variables from the saved colors/radius.
+		$style = self::style_vars( $l );
+
 		if ( ! class_exists( 'WooCommerce' ) || is_null( WC()->cart ) ) {
-			return '<div class="neximan-invoice neximan-invoice--empty"><p>' . esc_html( $l['empty'] ) . '</p></div>';
+			return '<div class="neximan-invoice neximan-invoice--empty" style="' . esc_attr( $style ) . '"><p>' . esc_html( $l['empty'] ) . '</p></div>';
 		}
 
 		$cart  = WC()->cart;
@@ -123,7 +168,7 @@ class Invoice {
 		if ( empty( $items ) ) {
 			$shop = ! empty( $l['shop_url'] ) ? $l['shop_url'] : ( function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 'shop' ) : home_url( '/' ) );
 			?>
-			<div class="neximan-invoice neximan-invoice--empty">
+			<div class="neximan-invoice neximan-invoice--empty" dir="rtl" style="<?php echo esc_attr( $style ); ?>">
 				<div class="neximan-invoice-emptyicon">🛒</div>
 				<p><?php echo esc_html( $l['empty'] ); ?></p>
 				<a class="neximan-invoice-btn neximan-invoice-btn--ghost" href="<?php echo esc_url( $shop ); ?>"><?php echo esc_html( $l['continue'] ); ?></a>
@@ -132,7 +177,7 @@ class Invoice {
 			return ob_get_clean();
 		}
 		?>
-		<div class="neximan-invoice" dir="rtl">
+		<div class="neximan-invoice" dir="rtl" style="<?php echo esc_attr( $style ); ?>">
 			<div class="neximan-invoice-head">
 				<div>
 					<h2 class="neximan-invoice-title"><?php echo esc_html( $l['title'] ); ?></h2>
@@ -253,11 +298,41 @@ class Invoice {
 			</div>
 
 			<div class="neximan-invoice-meta">
-				<div class="neximan-invoice-qty"><?php echo esc_html( $l['col_qty'] ); ?>: <?php echo esc_html( self::fa_num( $qty ) ); ?></div>
+				<div class="neximan-invoice-qty"><?php echo esc_html( $l['col_qty'] ); ?>: <?php echo esc_html( ( isset( $l['fa_digits'] ) && 'no' === $l['fa_digits'] ) ? $qty : self::fa_num( $qty ) ); ?></div>
 				<div class="neximan-invoice-line"><?php echo wp_kses_post( wc_price( $line_total ) ); ?></div>
 			</div>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Builds the inline CSS variable string from settings colors/radius.
+	 *
+	 * @param array $l Settings/labels array.
+	 * @return string
+	 */
+	public static function style_vars( $l ) {
+		$map = array(
+			'accent'  => '--nx-inv-accent',
+			'accent2' => '--nx-inv-accent-2',
+			'dark'    => '--nx-inv-dark',
+			'text'    => '--nx-inv-text',
+			'card'    => '--nx-inv-card',
+			'bg'      => '--nx-inv-bg',
+			'border'  => '--nx-inv-border',
+		);
+
+		$out = '';
+		foreach ( $map as $key => $var ) {
+			if ( ! empty( $l[ $key ] ) ) {
+				$out .= $var . ':' . $l[ $key ] . ';';
+			}
+		}
+		if ( isset( $l['radius'] ) && '' !== $l['radius'] ) {
+			$out .= '--nx-inv-radius:' . (int) $l['radius'] . 'px;';
+		}
+
+		return $out;
 	}
 
 	/**
