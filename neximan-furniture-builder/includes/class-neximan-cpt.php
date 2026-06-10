@@ -131,13 +131,13 @@ class CPT {
 					'color'           => __( 'Color', 'neximan-builder' ),
 				),
 				'standardLayouts' => array(
-					__( '۲ نفره', 'neximan-builder' ),
-					__( '۳ نفره', 'neximan-builder' ),
-					__( '۴ نفره', 'neximan-builder' ),
-					__( '۵ نفره', 'neximan-builder' ),
-					__( '۶ نفره', 'neximan-builder' ),
-					__( '۷ نفره', 'neximan-builder' ),
-					__( 'L شکل', 'neximan-builder' ),
+					__( '2-seater', 'neximan-builder' ),
+					__( '3-seater', 'neximan-builder' ),
+					__( '4-seater', 'neximan-builder' ),
+					__( '5-seater', 'neximan-builder' ),
+					__( '6-seater', 'neximan-builder' ),
+					__( '7-seater', 'neximan-builder' ),
+					__( 'L-shape', 'neximan-builder' ),
 				),
 			)
 		);

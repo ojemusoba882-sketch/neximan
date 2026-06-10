@@ -73,6 +73,7 @@ class Config {
 			'models'       => array(),
 			'colors'       => array(),
 			'options'      => array(),
+			'addons'       => array(),
 		);
 	}
 
@@ -145,6 +146,18 @@ class Config {
 				}
 
 				$clean['options'][] = $clean_group;
+			}
+		}
+
+		// Add-ons (quantity-based extras, e.g. coffee table).
+		if ( ! empty( $raw['addons'] ) && is_array( $raw['addons'] ) ) {
+			foreach ( $raw['addons'] as $ai => $addon ) {
+				$clean['addons'][] = array(
+					'id'    => self::clean_id( isset( $addon['id'] ) ? $addon['id'] : 'a' . $ai ),
+					'name'  => sanitize_text_field( isset( $addon['name'] ) ? $addon['name'] : '' ),
+					'price' => isset( $addon['price'] ) ? (float) $addon['price'] : 0,
+					'max'   => isset( $addon['max'] ) ? max( 1, (int) $addon['max'] ) : 1,
+				);
 			}
 		}
 
@@ -231,6 +244,7 @@ class Config {
 			'models'    => $raw['models'],
 			'colors'    => $raw['colors'],
 			'options'   => $raw['options'],
+			'addons'    => isset( $raw['addons'] ) ? $raw['addons'] : array(),
 		);
 	}
 
@@ -323,6 +337,15 @@ class Config {
 				);
 			}
 
+			$addons = array();
+			foreach ( ( isset( $series['addons'] ) ? $series['addons'] : array() ) as $addon ) {
+				$addons[ $addon['id'] ] = array(
+					'name'  => $addon['name'],
+					'price' => (float) $addon['price'],
+					'max'   => isset( $addon['max'] ) ? (int) $addon['max'] : 1,
+				);
+			}
+
 			$manifest['series'][ $sid ] = array(
 				'name'      => $series['name'],
 				'wooId'     => (int) $series['wooId'],
@@ -333,6 +356,7 @@ class Config {
 				'models'    => $models,
 				'colors'    => $colors,
 				'options'   => $options,
+				'addons'    => $addons,
 			);
 		}
 
@@ -384,9 +408,10 @@ class Config {
 	 * @param string $color_id   Selected color id.
 	 * @param array  $option_sel Map of groupId => choiceId.
 	 * @param array  $part_sel   Map of partId => moduleId (composition selections).
+	 * @param array  $addon_sel  Map of addonId => quantity.
 	 * @return array|null
 	 */
-	public static function compute_from_manifest( $manifest, $series_id, $model_id, $layout_id, $color_id, $option_sel, $part_sel = array() ) {
+	public static function compute_from_manifest( $manifest, $series_id, $model_id, $layout_id, $color_id, $option_sel, $part_sel = array(), $addon_sel = array() ) {
 		if ( empty( $manifest['series'][ $series_id ] ) ) {
 			return null;
 		}
@@ -475,6 +500,27 @@ class Config {
 				if ( ! empty( $group['varAttr'] ) && '' !== $choice['varValue'] ) {
 					$var_attr[ 'attribute_' . $group['varAttr'] ] = $choice['varValue'];
 				}
+			}
+		}
+
+		// Add-ons (qty x unit price).
+		if ( is_array( $addon_sel ) && ! empty( $series['addons'] ) ) {
+			foreach ( $addon_sel as $addon_id => $qty ) {
+				if ( empty( $series['addons'][ $addon_id ] ) ) {
+					continue;
+				}
+				$addon = $series['addons'][ $addon_id ];
+				$max   = isset( $addon['max'] ) ? (int) $addon['max'] : 1;
+				$qty   = max( 0, min( (int) $qty, $max ) );
+				if ( $qty < 1 ) {
+					continue;
+				}
+				$price += (float) $addon['price'] * $qty;
+
+				$option_labels[] = array(
+					'label' => $addon['name'],
+					'value' => (string) $qty,
+				);
 			}
 		}
 

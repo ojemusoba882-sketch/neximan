@@ -28,6 +28,13 @@ class WooCommerce {
 	const CART_KEY = 'neximan_builder';
 
 	/**
+	 * Product id being added during the current AJAX request (forced purchasable).
+	 *
+	 * @var int
+	 */
+	private $forced_product_id = 0;
+
+	/**
 	 * Registers hooks.
 	 *
 	 * @return void
@@ -88,7 +95,14 @@ class WooCommerce {
 			}
 		}
 
-		$resolved = Config::compute_from_manifest( $manifest, $series_id, $model_id, $layout_id, $color_id, $option_sel, $part_sel );
+		$addon_sel = array();
+		if ( isset( $_POST['addons'] ) && is_array( $_POST['addons'] ) ) {
+			foreach ( wp_unslash( $_POST['addons'] ) as $addon_id => $qty ) {
+				$addon_sel[ sanitize_text_field( $addon_id ) ] = (int) $qty;
+			}
+		}
+
+		$resolved = Config::compute_from_manifest( $manifest, $series_id, $model_id, $layout_id, $color_id, $option_sel, $part_sel, $addon_sel );
 		if ( null === $resolved ) {
 			wp_send_json_error( array( 'message' => __( 'Selected configuration is not valid.', 'neximan-builder' ) ) );
 		}
@@ -106,6 +120,14 @@ class WooCommerce {
 		if ( ! $product ) {
 			wp_send_json_error( array( 'message' => __( 'The linked product was not found.', 'neximan-builder' ) ) );
 		}
+
+		// Builder products are often priced dynamically (empty/zero price), which
+		// makes WooCommerce treat them as not purchasable. Force purchasability
+		// and a non-empty price for the product being added during this request.
+		$this->forced_product_id = $product_id;
+		add_filter( 'woocommerce_is_purchasable', array( $this, 'force_purchasable' ), 99, 2 );
+		add_filter( 'woocommerce_variation_is_purchasable', array( $this, 'force_purchasable' ), 99, 2 );
+
 		$variation_id    = 0;
 		$variation_attrs = array();
 		if ( $product->is_type( 'variable' ) && ! empty( $resolved['variation_attr'] ) ) {
@@ -178,6 +200,29 @@ class WooCommerce {
 				'price'        => $line_price,
 			)
 		);
+	}
+
+	/**
+	 * Forces the target product to be purchasable during the add-to-cart request,
+	 * so dynamically-priced builder products can be added even with empty price.
+	 *
+	 * @param bool        $purchasable Current purchasable state.
+	 * @param \WC_Product $product     Product object.
+	 * @return bool
+	 */
+	public function force_purchasable( $purchasable, $product ) {
+		if ( ! $this->forced_product_id || ! is_object( $product ) ) {
+			return $purchasable;
+		}
+
+		$id        = $product->get_id();
+		$parent_id = $product->get_parent_id();
+
+		if ( $id === $this->forced_product_id || $parent_id === $this->forced_product_id ) {
+			return true;
+		}
+
+		return $purchasable;
 	}
 
 	/**

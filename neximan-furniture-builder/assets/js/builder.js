@@ -108,6 +108,7 @@
 			layouts: root.querySelector( '.neximan-layout-options' ),
 			parts: root.querySelector( '.neximan-parts' ),
 			options: root.querySelector( '.neximan-options' ),
+			addons: root.querySelector( '.neximan-addons' ),
 			colors: root.querySelector( '.neximan-color-options' ),
 			infoLayout: root.querySelector( '.neximan-info-layout' ),
 			infoModule: root.querySelector( '.neximan-info-module' ),
@@ -116,7 +117,7 @@
 			feedback: root.querySelector( '.neximan-feedback' )
 		};
 
-		var state = { seriesIndex: 0, modelId: '', layoutId: '', colorId: '', options: {}, partSel: {} };
+		var state = { seriesIndex: 0, modelId: '', layoutId: '', colorId: '', options: {}, partSel: {}, addons: {} };
 
 		/**
 		 * Returns a module (building block) from the active series by id.
@@ -192,6 +193,12 @@
 				var choice = byId( group.choices, state.options[ group.id ] );
 				if ( choice ) {
 					total += parseFloat( choice.price ) || 0;
+				}
+			} );
+			( activeSeries().addons || [] ).forEach( function ( addon ) {
+				var qty = parseInt( state.addons[ addon.id ], 10 ) || 0;
+				if ( qty > 0 ) {
+					total += ( parseFloat( addon.price ) || 0 ) * qty;
 				}
 			} );
 			return total;
@@ -490,6 +497,78 @@
 		}
 
 		/**
+		 * Renders add-ons (e.g. coffee table) with a quantity stepper.
+		 *
+		 * @return {void}
+		 */
+		function renderAddons() {
+			if ( ! els.addons ) {
+				return;
+			}
+			els.addons.innerHTML = '';
+			var addons = activeSeries().addons || [];
+			if ( ! addons.length ) {
+				return;
+			}
+
+			var section = document.createElement( 'div' );
+			section.className = 'neximan-control-section';
+
+			var label = document.createElement( 'label' );
+			label.className = 'neximan-control-label';
+			label.textContent = activeSeries().addonsLabel || '';
+			if ( label.textContent ) {
+				section.appendChild( label );
+			}
+
+			addons.forEach( function ( addon ) {
+				var max = parseInt( addon.max, 10 ) || 1;
+				var current = parseInt( state.addons[ addon.id ], 10 ) || 0;
+
+				var rowEl = document.createElement( 'div' );
+				rowEl.className = 'neximan-addon-row';
+
+				var nameEl = document.createElement( 'span' );
+				nameEl.className = 'neximan-addon-name';
+				nameEl.textContent = addon.name || '';
+
+				var stepper = document.createElement( 'div' );
+				stepper.className = 'neximan-stepper';
+
+				var minus = makeButton( 'neximan-step neximan-step-minus', '−', {} );
+				var qtyEl = document.createElement( 'span' );
+				qtyEl.className = 'neximan-step-qty';
+				qtyEl.textContent = String( current );
+				var plus = makeButton( 'neximan-step neximan-step-plus', '+', {} );
+
+				minus.addEventListener( 'click', function () {
+					var q = ( parseInt( state.addons[ addon.id ], 10 ) || 0 ) - 1;
+					if ( q < 0 ) { q = 0; }
+					state.addons[ addon.id ] = q;
+					qtyEl.textContent = String( q );
+					renderPreview();
+				} );
+				plus.addEventListener( 'click', function () {
+					var q = ( parseInt( state.addons[ addon.id ], 10 ) || 0 ) + 1;
+					if ( q > max ) { q = max; }
+					state.addons[ addon.id ] = q;
+					qtyEl.textContent = String( q );
+					renderPreview();
+				} );
+
+				stepper.appendChild( minus );
+				stepper.appendChild( qtyEl );
+				stepper.appendChild( plus );
+
+				rowEl.appendChild( nameEl );
+				rowEl.appendChild( stepper );
+				section.appendChild( rowEl );
+			} );
+
+			els.addons.appendChild( section );
+		}
+
+		/**
 		 * Renders the model tabs for the active series.
 		 *
 		 * @return {void}
@@ -600,8 +679,15 @@
 				}
 			} );
 
+			// Add-ons start at zero quantity.
+			state.addons = {};
+			( series.addons || [] ).forEach( function ( addon ) {
+				state.addons[ addon.id ] = 0;
+			} );
+
 			renderModelTabs();
 			renderOptions();
+			renderAddons();
 			renderColors();
 			selectModel( series.models.length ? series.models[ 0 ].id : '' );
 		}
@@ -637,6 +723,12 @@
 					return;
 				}
 				body.append( 'options[' + groupId + ']', state.options[ groupId ] );
+			} );
+			Object.keys( state.addons ).forEach( function ( addonId ) {
+				var qty = parseInt( state.addons[ addonId ], 10 ) || 0;
+				if ( qty > 0 ) {
+					body.append( 'addons[' + addonId + ']', qty );
+				}
 			} );
 			Object.keys( state.partSel ).forEach( function ( partId ) {
 				body.append( 'parts[' + partId + ']', state.partSel[ partId ] );
