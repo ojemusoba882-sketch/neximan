@@ -331,6 +331,7 @@
 		var data = {
 			wooProductId: parseInt( $( '#neximan-woo-id' ).val(), 10 ) || 0,
 			priceMode: $( '#neximan-price-mode' ).val() || 'dynamic',
+			pricingMode: $( '#neximan-pricing-mode' ).val() || 'modular',
 			varAttrs: {
 				layout: $( '#neximan-var-layout' ).val() || '',
 				color: $( '#neximan-var-color' ).val() || ''
@@ -430,6 +431,19 @@
 	// ----- Events -----------------------------------------------------------
 
 	$root.on( 'input change', 'input, select', serialize );
+
+	/**
+	 * Shows/hides modules + composition UI based on the selected pricing mode.
+	 *
+	 * @return {void}
+	 */
+	function updateModeUI() {
+		var simple = $( '#neximan-pricing-mode' ).val() === 'simple';
+		$root.toggleClass( 'nx-mode-simple', simple );
+	}
+
+	$( '#neximan-pricing-mode' ).on( 'change', updateModeUI );
+	updateModeUI();
 
 	// Keep part module checkboxes in sync when modules change.
 	$modules.on( 'input change', '.nx-module-name', refreshPartModules );

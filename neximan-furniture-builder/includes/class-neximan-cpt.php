@@ -163,11 +163,18 @@ class CPT {
 
 			<div class="neximan-admin-row">
 				<label>
+					<strong><?php esc_html_e( 'Pricing Mode', 'neximan-builder' ); ?></strong>
+					<select id="neximan-pricing-mode">
+						<option value="modular" <?php selected( isset( $config['pricingMode'] ) ? $config['pricingMode'] : 'modular', 'modular' ); ?>><?php esc_html_e( 'Modular (sum of modules)', 'neximan-builder' ); ?></option>
+						<option value="simple" <?php selected( isset( $config['pricingMode'] ) ? $config['pricingMode'] : 'modular', 'simple' ); ?>><?php esc_html_e( 'Simple (flat price per layout)', 'neximan-builder' ); ?></option>
+					</select>
+				</label>
+				<label>
 					<strong><?php esc_html_e( 'Parent WooCommerce Product ID', 'neximan-builder' ); ?></strong>
 					<input type="number" min="0" step="1" id="neximan-woo-id" value="<?php echo esc_attr( isset( $config['wooProductId'] ) ? $config['wooProductId'] : 0 ); ?>" />
 				</label>
 				<label>
-					<strong><?php esc_html_e( 'Price Mode', 'neximan-builder' ); ?></strong>
+					<strong><?php esc_html_e( 'Checkout Price Mode', 'neximan-builder' ); ?></strong>
 					<select id="neximan-price-mode">
 						<option value="dynamic" <?php selected( isset( $config['priceMode'] ) ? $config['priceMode'] : 'dynamic', 'dynamic' ); ?>><?php esc_html_e( 'Dynamic (builder price)', 'neximan-builder' ); ?></option>
 						<option value="product" <?php selected( isset( $config['priceMode'] ) ? $config['priceMode'] : 'dynamic', 'product' ); ?>><?php esc_html_e( 'WooCommerce product price', 'neximan-builder' ); ?></option>
@@ -187,10 +194,12 @@ class CPT {
 				</label>
 			</div>
 
-			<h3><?php esc_html_e( 'Modules (building blocks)', 'neximan-builder' ); ?></h3>
-			<p class="description"><?php esc_html_e( 'Define the reusable parts with their price (e.g. Seat 60, Seat 85, Corner, Pouf, Table). Layout prices are calculated by summing the modules used in each layout.', 'neximan-builder' ); ?></p>
-			<div id="neximan-modules" class="neximan-list"></div>
-			<button type="button" class="button" id="neximan-add-module"><?php esc_html_e( '+ Add Module', 'neximan-builder' ); ?></button>
+			<div class="neximan-modules-section">
+				<h3><?php esc_html_e( 'Modules (building blocks)', 'neximan-builder' ); ?></h3>
+				<p class="description"><?php esc_html_e( 'Define the reusable parts with their price (e.g. Seat 60, Seat 85, Corner, Pouf, Table). Layout prices are calculated by summing the modules used in each layout.', 'neximan-builder' ); ?></p>
+				<div id="neximan-modules" class="neximan-list"></div>
+				<button type="button" class="button" id="neximan-add-module"><?php esc_html_e( '+ Add Module', 'neximan-builder' ); ?></button>
+			</div>
 
 			<h3><?php esc_html_e( 'Fabric Colors', 'neximan-builder' ); ?></h3>
 			<div id="neximan-colors" class="neximan-list"></div>

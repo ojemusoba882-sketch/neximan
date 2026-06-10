@@ -170,14 +170,16 @@
 				var layout = byId( model.layouts, state.layoutId );
 				if ( layout ) {
 					total += parseFloat( layout.price ) || 0;
-					// Composition parts: qty x selected module price.
-					( layout.parts || [] ).forEach( function ( part ) {
-						var modId = selectedModuleForPart( part );
-						var mod = modId ? moduleById( modId ) : null;
-						if ( mod ) {
-							total += ( parseFloat( mod.price ) || 0 ) * ( parseInt( part.qty, 10 ) || 1 );
-						}
-					} );
+					// Composition parts: qty x selected module price (modular mode only).
+					if ( activeSeries().pricingMode !== 'simple' ) {
+						( layout.parts || [] ).forEach( function ( part ) {
+							var modId = selectedModuleForPart( part );
+							var mod = modId ? moduleById( modId ) : null;
+							if ( mod ) {
+								total += ( parseFloat( mod.price ) || 0 ) * ( parseInt( part.qty, 10 ) || 1 );
+							}
+						} );
+					}
 				}
 			}
 			var color = byId( activeSeries().colors, state.colorId );
@@ -297,7 +299,7 @@
 			}
 			els.parts.innerHTML = '';
 			var layout = activeLayout();
-			if ( ! layout ) {
+			if ( ! layout || activeSeries().pricingMode === 'simple' ) {
 				return;
 			}
 

@@ -195,3 +195,11 @@
 	text-decoration: none;
 	line-height: 1;
 }
+
+
+/* Pricing mode: hide modular-only UI in simple mode */
+.neximan-admin.nx-mode-simple .neximan-modules-section,
+.neximan-admin.nx-mode-simple .neximan-parts-admin,
+.neximan-admin.nx-mode-simple .nx-add-part {
+	display: none;
+}

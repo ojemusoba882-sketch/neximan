@@ -928,6 +928,7 @@ class Builder_Widget extends Widget_Base {
 			'name'      => '',
 			'wooId'     => isset( $settings['woo_fallback_product'] ) ? (int) $settings['woo_fallback_product'] : 0,
 			'priceMode' => isset( $settings['woo_price_mode'] ) ? $settings['woo_price_mode'] : 'dynamic',
+			'pricingMode' => 'simple',
 			'varAttrs'  => array(
 				'layout' => isset( $settings['var_attr_layout'] ) ? $settings['var_attr_layout'] : '',
 				'color'  => isset( $settings['var_attr_color'] ) ? $settings['var_attr_color'] : '',

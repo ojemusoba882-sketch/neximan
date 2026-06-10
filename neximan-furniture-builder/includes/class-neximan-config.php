@@ -64,6 +64,7 @@ class Config {
 		return array(
 			'wooProductId' => 0,
 			'priceMode'    => 'dynamic',
+			'pricingMode'  => 'modular',
 			'varAttrs'     => array(
 				'layout' => '',
 				'color'  => '',
@@ -90,6 +91,7 @@ class Config {
 
 		$clean['wooProductId'] = isset( $raw['wooProductId'] ) ? absint( $raw['wooProductId'] ) : 0;
 		$clean['priceMode']    = self::clean_price_mode( isset( $raw['priceMode'] ) ? $raw['priceMode'] : 'dynamic' );
+		$clean['pricingMode']  = ( isset( $raw['pricingMode'] ) && 'simple' === $raw['pricingMode'] ) ? 'simple' : 'modular';
 
 		$clean['varAttrs'] = array(
 			'layout' => isset( $raw['varAttrs']['layout'] ) ? self::clean_attr_key( $raw['varAttrs']['layout'] ) : '',
@@ -223,6 +225,7 @@ class Config {
 			'name'      => get_the_title( $post_id ),
 			'wooId'     => (int) $raw['wooProductId'],
 			'priceMode' => $raw['priceMode'],
+			'pricingMode' => $raw['pricingMode'],
 			'varAttrs'  => $raw['varAttrs'],
 			'modules'   => $raw['modules'],
 			'models'    => $raw['models'],
@@ -324,6 +327,7 @@ class Config {
 				'name'      => $series['name'],
 				'wooId'     => (int) $series['wooId'],
 				'priceMode' => isset( $series['priceMode'] ) ? $series['priceMode'] : 'dynamic',
+				'pricingMode' => isset( $series['pricingMode'] ) ? $series['pricingMode'] : 'modular',
 				'varAttrs'  => isset( $series['varAttrs'] ) ? $series['varAttrs'] : array(),
 				'modules'   => $modules,
 				'models'    => $models,
@@ -411,7 +415,8 @@ class Config {
 			}
 
 			// Sum the composition: each part = qty x selected module price.
-			foreach ( ( isset( $layout['parts'] ) ? $layout['parts'] : array() ) as $part ) {
+			$is_modular = ! isset( $series['pricingMode'] ) || 'simple' !== $series['pricingMode'];
+			foreach ( ( $is_modular && isset( $layout['parts'] ) ? $layout['parts'] : array() ) as $part ) {
 				$module_ids = isset( $part['moduleIds'] ) ? $part['moduleIds'] : array();
 				if ( empty( $module_ids ) ) {
 					continue;
