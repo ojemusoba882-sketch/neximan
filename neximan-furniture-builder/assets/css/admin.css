@@ -139,3 +139,59 @@
 	text-decoration: none;
 	cursor: pointer;
 }
+
+
+/* Modules & composition */
+.neximan-row input.nx-module-name {
+	flex: 1;
+}
+.neximan-row input.nx-module-price,
+.neximan-row input.nx-part-qty {
+	width: 90px;
+}
+
+.neximan-layout-block {
+	border: 1px solid #dcdcde;
+	border-radius: 6px;
+	padding: 8px;
+	margin-bottom: 8px;
+	background: #fbfbfc;
+}
+
+.neximan-parts-admin {
+	margin: 6px 0 6px 14px;
+	padding-left: 10px;
+	border-left: 3px solid #e2e4e7;
+}
+
+.neximan-part-row {
+	background: #fff;
+}
+
+.nx-part-modules {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px 12px;
+	flex: 1;
+	align-items: center;
+}
+
+.nx-modcheck {
+	font-size: 12px;
+	white-space: nowrap;
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+}
+
+.nx-empty {
+	color: #b32d2e;
+	font-size: 12px;
+}
+
+.nx-remove-layout {
+	color: #b32d2e !important;
+	font-size: 18px !important;
+	text-decoration: none;
+	line-height: 1;
+}

@@ -187,6 +187,11 @@ class CPT {
 				</label>
 			</div>
 
+			<h3><?php esc_html_e( 'Modules (building blocks)', 'neximan-builder' ); ?></h3>
+			<p class="description"><?php esc_html_e( 'Define the reusable parts with their price (e.g. Seat 60, Seat 85, Corner, Pouf, Table). Layout prices are calculated by summing the modules used in each layout.', 'neximan-builder' ); ?></p>
+			<div id="neximan-modules" class="neximan-list"></div>
+			<button type="button" class="button" id="neximan-add-module"><?php esc_html_e( '+ Add Module', 'neximan-builder' ); ?></button>
+
 			<h3><?php esc_html_e( 'Fabric Colors', 'neximan-builder' ); ?></h3>
 			<div id="neximan-colors" class="neximan-list"></div>
 			<button type="button" class="button" id="neximan-add-color"><?php esc_html_e( '+ Add Color', 'neximan-builder' ); ?></button>

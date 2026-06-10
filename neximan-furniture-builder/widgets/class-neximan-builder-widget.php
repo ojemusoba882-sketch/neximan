@@ -1066,6 +1066,8 @@ class Builder_Widget extends Widget_Base {
 							<div class="neximan-layout-options"></div>
 						</div>
 
+						<div class="neximan-parts"></div>
+
 						<div class="neximan-options"></div>
 
 						<div class="neximan-control-section">

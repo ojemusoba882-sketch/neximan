@@ -68,6 +68,7 @@ class Config {
 				'layout' => '',
 				'color'  => '',
 			),
+			'modules'      => array(),
 			'models'       => array(),
 			'colors'       => array(),
 			'options'      => array(),
@@ -94,6 +95,18 @@ class Config {
 			'layout' => isset( $raw['varAttrs']['layout'] ) ? self::clean_attr_key( $raw['varAttrs']['layout'] ) : '',
 			'color'  => isset( $raw['varAttrs']['color'] ) ? self::clean_attr_key( $raw['varAttrs']['color'] ) : '',
 		);
+
+		// Modules (building blocks: seat-60, seat-85, corner, pouf, table, ...).
+		if ( ! empty( $raw['modules'] ) && is_array( $raw['modules'] ) ) {
+			foreach ( $raw['modules'] as $mi => $module ) {
+				$clean['modules'][] = array(
+					'id'    => self::clean_id( isset( $module['id'] ) ? $module['id'] : 'mod' . $mi ),
+					'name'  => sanitize_text_field( isset( $module['name'] ) ? $module['name'] : '' ),
+					'price' => isset( $module['price'] ) ? (float) $module['price'] : 0,
+					'image' => isset( $module['image'] ) ? esc_url_raw( $module['image'] ) : '',
+				);
+			}
+		}
 
 		// Colors.
 		if ( ! empty( $raw['colors'] ) && is_array( $raw['colors'] ) ) {
@@ -147,14 +160,39 @@ class Config {
 
 				if ( ! empty( $model['layouts'] ) && is_array( $model['layouts'] ) ) {
 					foreach ( $model['layouts'] as $li => $layout ) {
-						$clean_model['layouts'][] = array(
+						$clean_layout = array(
 							'id'       => self::clean_id( isset( $layout['id'] ) ? $layout['id'] : 'l' . $li ),
 							'label'    => sanitize_text_field( isset( $layout['label'] ) ? $layout['label'] : '' ),
 							'image'    => isset( $layout['image'] ) ? esc_url_raw( $layout['image'] ) : '',
 							'imageId'  => isset( $layout['imageId'] ) ? absint( $layout['imageId'] ) : 0,
 							'price'    => isset( $layout['price'] ) ? (float) $layout['price'] : 0,
 							'varValue' => isset( $layout['varValue'] ) ? sanitize_text_field( $layout['varValue'] ) : '',
+							'parts'    => array(),
 						);
+
+						// Composition: each part references one or more modules and a quantity.
+						if ( ! empty( $layout['parts'] ) && is_array( $layout['parts'] ) ) {
+							foreach ( $layout['parts'] as $pi => $part ) {
+								$module_ids = array();
+								if ( ! empty( $part['moduleIds'] ) && is_array( $part['moduleIds'] ) ) {
+									foreach ( $part['moduleIds'] as $mid ) {
+										$mid = self::clean_id( $mid );
+										if ( '' !== $mid ) {
+											$module_ids[] = $mid;
+										}
+									}
+								}
+
+								$clean_layout['parts'][] = array(
+									'id'        => self::clean_id( isset( $part['id'] ) ? $part['id'] : 'p' . $pi ),
+									'label'     => sanitize_text_field( isset( $part['label'] ) ? $part['label'] : '' ),
+									'qty'       => isset( $part['qty'] ) ? max( 1, (int) $part['qty'] ) : 1,
+									'moduleIds' => $module_ids,
+								);
+							}
+						}
+
+						$clean_model['layouts'][] = $clean_layout;
 					}
 				}
 
@@ -186,6 +224,7 @@ class Config {
 			'wooId'     => (int) $raw['wooProductId'],
 			'priceMode' => $raw['priceMode'],
 			'varAttrs'  => $raw['varAttrs'],
+			'modules'   => $raw['modules'],
 			'models'    => $raw['models'],
 			'colors'    => $raw['colors'],
 			'options'   => $raw['options'],
@@ -216,13 +255,33 @@ class Config {
 			$sid    = $series['id'];
 			$models = array();
 
+			$modules = array();
+			foreach ( ( isset( $series['modules'] ) ? $series['modules'] : array() ) as $module ) {
+				$modules[ $module['id'] ] = array(
+					'name'  => $module['name'],
+					'price' => (float) $module['price'],
+					'image' => isset( $module['image'] ) ? $module['image'] : '',
+				);
+			}
+
 			foreach ( $series['models'] as $model ) {
 				$layouts = array();
 				foreach ( $model['layouts'] as $layout ) {
+					$parts = array();
+					foreach ( ( isset( $layout['parts'] ) ? $layout['parts'] : array() ) as $part ) {
+						$parts[] = array(
+							'id'        => $part['id'],
+							'label'     => $part['label'],
+							'qty'       => isset( $part['qty'] ) ? (int) $part['qty'] : 1,
+							'moduleIds' => isset( $part['moduleIds'] ) ? $part['moduleIds'] : array(),
+						);
+					}
+
 					$layouts[ $layout['id'] ] = array(
 						'label'    => $layout['label'],
 						'price'    => (float) $layout['price'],
 						'varValue' => isset( $layout['varValue'] ) ? $layout['varValue'] : '',
+						'parts'    => $parts,
 					);
 				}
 
@@ -266,6 +325,7 @@ class Config {
 				'wooId'     => (int) $series['wooId'],
 				'priceMode' => isset( $series['priceMode'] ) ? $series['priceMode'] : 'dynamic',
 				'varAttrs'  => isset( $series['varAttrs'] ) ? $series['varAttrs'] : array(),
+				'modules'   => $modules,
 				'models'    => $models,
 				'colors'    => $colors,
 				'options'   => $options,
@@ -319,14 +379,16 @@ class Config {
 	 * @param string $layout_id  Selected layout id.
 	 * @param string $color_id   Selected color id.
 	 * @param array  $option_sel Map of groupId => choiceId.
+	 * @param array  $part_sel   Map of partId => moduleId (composition selections).
 	 * @return array|null
 	 */
-	public static function compute_from_manifest( $manifest, $series_id, $model_id, $layout_id, $color_id, $option_sel ) {
+	public static function compute_from_manifest( $manifest, $series_id, $model_id, $layout_id, $color_id, $option_sel, $part_sel = array() ) {
 		if ( empty( $manifest['series'][ $series_id ] ) ) {
 			return null;
 		}
 
-		$series = $manifest['series'][ $series_id ];
+		$series   = $manifest['series'][ $series_id ];
+		$modules  = isset( $series['modules'] ) ? $series['modules'] : array();
 
 		if ( empty( $series['models'][ $model_id ] ) ) {
 			return null;
@@ -335,8 +397,9 @@ class Config {
 		$model    = $series['models'][ $model_id ];
 		$price    = (float) $model['basePrice'];
 		$var_attr = array();
+		$part_labels = array();
 
-		// Layout.
+		// Layout (+ its module composition).
 		$layout_label = '';
 		if ( ! empty( $series['models'][ $model_id ]['layouts'][ $layout_id ] ) ) {
 			$layout        = $series['models'][ $model_id ]['layouts'][ $layout_id ];
@@ -345,6 +408,34 @@ class Config {
 
 			if ( ! empty( $series['varAttrs']['layout'] ) && '' !== $layout['varValue'] ) {
 				$var_attr[ 'attribute_' . $series['varAttrs']['layout'] ] = $layout['varValue'];
+			}
+
+			// Sum the composition: each part = qty x selected module price.
+			foreach ( ( isset( $layout['parts'] ) ? $layout['parts'] : array() ) as $part ) {
+				$module_ids = isset( $part['moduleIds'] ) ? $part['moduleIds'] : array();
+				if ( empty( $module_ids ) ) {
+					continue;
+				}
+
+				$selected = isset( $part_sel[ $part['id'] ] ) ? (string) $part_sel[ $part['id'] ] : '';
+				if ( '' === $selected || ! in_array( $selected, $module_ids, true ) ) {
+					$selected = $module_ids[0]; // Default to the first module.
+				}
+
+				if ( empty( $modules[ $selected ] ) ) {
+					continue;
+				}
+
+				$qty    = isset( $part['qty'] ) ? max( 1, (int) $part['qty'] ) : 1;
+				$price += (float) $modules[ $selected ]['price'] * $qty;
+
+				if ( count( $module_ids ) > 1 ) {
+					// Record selectable parts for cart/order meta.
+					$part_labels[] = array(
+						'label' => '' !== $part['label'] ? $part['label'] : $modules[ $selected ]['name'],
+						'value' => $modules[ $selected ]['name'],
+					);
+				}
 			}
 		}
 
@@ -381,6 +472,9 @@ class Config {
 				}
 			}
 		}
+
+		// Merge selectable composition parts into the displayed option labels.
+		$option_labels = array_merge( $part_labels, $option_labels );
 
 		$product_id = ! empty( $model['wooId'] ) ? (int) $model['wooId'] : (int) $series['wooId'];
 		if ( ! $product_id ) {

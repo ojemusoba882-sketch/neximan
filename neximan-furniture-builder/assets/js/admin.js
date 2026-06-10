@@ -1,8 +1,9 @@
 /**
  * Neximan Furniture Builder - admin configuration UI.
  *
- * Builds an unlimited models -> layouts editor plus fabric colors and generic
- * option groups (e.g. Size), all on top of a single JSON field.
+ * Builds the full editor: modules (building blocks with prices), fabric colors,
+ * generic option groups, and models -> layouts. Each layout has a composition
+ * (parts) that references modules; layout price = sum of its modules.
  */
 ( function ( $ ) {
 	'use strict';
@@ -16,6 +17,7 @@
 	}
 
 	var $json = $( '#neximan-config-json' );
+	var $modules = $( '#neximan-modules' );
 	var $colors = $( '#neximan-colors' );
 	var $options = $( '#neximan-options' );
 	var $models = $( '#neximan-models' );
@@ -26,6 +28,7 @@
 	} catch ( e ) {
 		config = {};
 	}
+	config.modules = config.modules || [];
 	config.colors = config.colors || [];
 	config.options = config.options || [];
 	config.models = config.models || [];
@@ -48,6 +51,41 @@
 	 */
 	function attr( value ) {
 		return $( '<div>' ).text( value == null ? '' : String( value ) ).html().replace( /"/g, '&quot;' );
+	}
+
+	// ----- Modules ----------------------------------------------------------
+
+	/**
+	 * Builds a module (building block) row.
+	 *
+	 * @param {Object} module Module data.
+	 * @return {jQuery} Row.
+	 */
+	function moduleRow( module ) {
+		module = module || {};
+		var id = module.id || uid( 'mod' );
+
+		return $(
+			'<div class="neximan-row neximan-module-row" data-id="' + attr( id ) + '">' +
+				'<input type="text" class="nx-module-name" placeholder="Seat 60 / Corner / ..." value="' + attr( module.name || '' ) + '" />' +
+				'<input type="number" class="nx-module-price" step="1" min="0" placeholder="price" value="' + attr( module.price || 0 ) + '" />' +
+				'<button type="button" class="button-link nx-remove" title="x">&times;</button>' +
+			'</div>'
+		);
+	}
+
+	/**
+	 * Returns the current modules as [{id, name}] read from the DOM.
+	 *
+	 * @return {Array} Modules.
+	 */
+	function currentModules() {
+		var list = [];
+		$modules.children( '.neximan-module-row' ).each( function () {
+			var $r = $( this );
+			list.push( { id: String( $r.data( 'id' ) ), name: $r.find( '.nx-module-name' ).val() || String( $r.data( 'id' ) ) } );
+		} );
+		return list;
 	}
 
 	// ----- Colors -----------------------------------------------------------
@@ -127,30 +165,101 @@
 		return $block;
 	}
 
+	// ----- Composition parts (inside a layout) ------------------------------
+
+	/**
+	 * Builds the module checkbox list for a part, preserving selected ids.
+	 *
+	 * @param {Array} selectedIds Selected module ids.
+	 * @return {string} HTML.
+	 */
+	function moduleChecks( selectedIds ) {
+		selectedIds = selectedIds || [];
+		var html = '';
+		currentModules().forEach( function ( mod ) {
+			var checked = selectedIds.indexOf( mod.id ) !== -1 ? ' checked' : '';
+			html += '<label class="nx-modcheck"><input type="checkbox" class="nx-part-module" value="' + attr( mod.id ) + '"' + checked + ' /> ' + attr( mod.name ) + '</label>';
+		} );
+		if ( ! html ) {
+			html = '<em class="nx-empty">' + attr( 'Add modules above first.' ) + '</em>';
+		}
+		return html;
+	}
+
+	/**
+	 * Builds a composition part row.
+	 *
+	 * @param {Object} part Part data.
+	 * @return {jQuery} Row.
+	 */
+	function partRow( part ) {
+		part = part || {};
+		var id = part.id || uid( 'p' );
+
+		return $(
+			'<div class="neximan-row neximan-part-row" data-id="' + attr( id ) + '">' +
+				'<input type="text" class="nx-part-label" placeholder="position (e.g. وسط)" value="' + attr( part.label || '' ) + '" />' +
+				'<label class="nx-inline">×<input type="number" class="nx-part-qty" step="1" min="1" value="' + attr( part.qty || 1 ) + '" /></label>' +
+				'<span class="nx-part-modules">' + moduleChecks( part.moduleIds || [] ) + '</span>' +
+				'<button type="button" class="button-link nx-remove" title="x">&times;</button>' +
+			'</div>'
+		);
+	}
+
+	/**
+	 * Rebuilds the module checkboxes inside every part row to reflect the
+	 * current modules, preserving the previously checked ids.
+	 *
+	 * @return {void}
+	 */
+	function refreshPartModules() {
+		$models.find( '.neximan-part-row' ).each( function () {
+			var $p = $( this );
+			var selected = [];
+			$p.find( '.nx-part-module:checked' ).each( function () {
+				selected.push( $( this ).val() );
+			} );
+			$p.find( '.nx-part-modules' ).html( moduleChecks( selected ) );
+		} );
+	}
+
 	// ----- Layouts ----------------------------------------------------------
 
 	/**
-	 * Builds a layout row.
+	 * Builds a layout block (main fields + composition parts).
 	 *
 	 * @param {Object} layout Layout data.
-	 * @return {jQuery} Row.
+	 * @return {jQuery} Block.
 	 */
-	function layoutRow( layout ) {
+	function layoutBlock( layout ) {
 		layout = layout || {};
 		var id = layout.id || uid( 'l' );
 		var image = layout.image || '';
 
-		return $(
-			'<div class="neximan-row neximan-layout-row" data-id="' + attr( id ) + '" data-image-id="' + attr( layout.imageId || 0 ) + '">' +
-				'<span class="nx-thumb" style="' + ( image ? 'background-image:url(\'' + attr( image ) + '\')' : '' ) + '"></span>' +
-				'<input type="text" class="nx-layout-label" placeholder="' + attr( i18n.layout || 'Layout' ) + '" value="' + attr( layout.label || '' ) + '" />' +
-				'<input type="hidden" class="nx-layout-image" value="' + attr( image ) + '" />' +
-				'<button type="button" class="button nx-pick-image">' + ( i18n.selectImage || 'Image' ) + '</button>' +
-				'<input type="number" class="nx-layout-price" step="1" min="0" placeholder="+0" value="' + attr( layout.price || 0 ) + '" />' +
-				'<input type="text" class="nx-layout-var" placeholder="var value" value="' + attr( layout.varValue || '' ) + '" />' +
-				'<button type="button" class="button-link nx-remove" title="x">&times;</button>' +
+		var $block = $(
+			'<div class="neximan-layout-block" data-id="' + attr( id ) + '" data-image-id="' + attr( layout.imageId || 0 ) + '">' +
+				'<div class="neximan-row neximan-layout-row">' +
+					'<span class="nx-thumb" style="' + ( image ? 'background-image:url(\'' + attr( image ) + '\')' : '' ) + '"></span>' +
+					'<input type="text" class="nx-layout-label" placeholder="' + attr( i18n.layout || 'Layout' ) + '" value="' + attr( layout.label || '' ) + '" />' +
+					'<input type="hidden" class="nx-layout-image" value="' + attr( image ) + '" />' +
+					'<button type="button" class="button nx-pick-image">' + ( i18n.selectImage || 'Image' ) + '</button>' +
+					'<label class="nx-inline">+<input type="number" class="nx-layout-price" step="1" min="0" value="' + attr( layout.price || 0 ) + '" /></label>' +
+					'<input type="text" class="nx-layout-var" placeholder="var value" value="' + attr( layout.varValue || '' ) + '" />' +
+					'<button type="button" class="button-link nx-remove-layout" title="x">&times;</button>' +
+				'</div>' +
+				'<div class="neximan-parts-admin"></div>' +
+				'<div class="neximan-model-actions">' +
+					'<button type="button" class="button nx-add-part">+ Composition part</button>' +
+				'</div>' +
 			'</div>'
 		);
+
+		var $parts = $block.find( '.neximan-parts-admin' );
+		( layout.parts || [] ).forEach( function ( part ) {
+			$parts.append( partRow( part ) );
+		} );
+
+		return $block;
 	}
 
 	// ----- Models -----------------------------------------------------------
@@ -190,7 +299,7 @@
 
 		var $layouts = $block.find( '.neximan-layouts' );
 		( model.layouts || [] ).forEach( function ( layout ) {
-			$layouts.append( layoutRow( layout ) );
+			$layouts.append( layoutBlock( layout ) );
 		} );
 
 		return $block;
@@ -198,6 +307,9 @@
 
 	// ----- Initial render ---------------------------------------------------
 
+	config.modules.forEach( function ( module ) {
+		$modules.append( moduleRow( module ) );
+	} );
 	config.colors.forEach( function ( color ) {
 		$colors.append( colorRow( color ) );
 	} );
@@ -223,10 +335,20 @@
 				layout: $( '#neximan-var-layout' ).val() || '',
 				color: $( '#neximan-var-color' ).val() || ''
 			},
+			modules: [],
 			colors: [],
 			options: [],
 			models: []
 		};
+
+		$modules.children( '.neximan-module-row' ).each( function () {
+			var $r = $( this );
+			data.modules.push( {
+				id: $r.data( 'id' ),
+				name: $r.find( '.nx-module-name' ).val(),
+				price: parseFloat( $r.find( '.nx-module-price' ).val() ) || 0
+			} );
+		} );
 
 		$colors.children( '.neximan-color-row' ).each( function () {
 			var $r = $( this );
@@ -270,16 +392,33 @@
 				layouts: []
 			};
 
-			$m.find( '.neximan-layout-row' ).each( function () {
+			$m.find( '.neximan-layout-block' ).each( function () {
 				var $l = $( this );
-				model.layouts.push( {
+				var layout = {
 					id: $l.data( 'id' ),
-					label: $l.find( '.nx-layout-label' ).val(),
-					image: $l.find( '.nx-layout-image' ).val(),
+					label: $l.find( '.nx-layout-label' ).first().val(),
+					image: $l.find( '.nx-layout-image' ).first().val(),
 					imageId: parseInt( $l.attr( 'data-image-id' ), 10 ) || 0,
-					price: parseFloat( $l.find( '.nx-layout-price' ).val() ) || 0,
-					varValue: $l.find( '.nx-layout-var' ).val() || ''
+					price: parseFloat( $l.find( '.nx-layout-price' ).first().val() ) || 0,
+					varValue: $l.find( '.nx-layout-var' ).first().val() || '',
+					parts: []
+				};
+
+				$l.find( '.neximan-part-row' ).each( function () {
+					var $p = $( this );
+					var moduleIds = [];
+					$p.find( '.nx-part-module:checked' ).each( function () {
+						moduleIds.push( $( this ).val() );
+					} );
+					layout.parts.push( {
+						id: $p.data( 'id' ),
+						label: $p.find( '.nx-part-label' ).val(),
+						qty: parseInt( $p.find( '.nx-part-qty' ).val(), 10 ) || 1,
+						moduleIds: moduleIds
+					} );
 				} );
+
+				model.layouts.push( layout );
 			} );
 
 			data.models.push( model );
@@ -291,6 +430,15 @@
 	// ----- Events -----------------------------------------------------------
 
 	$root.on( 'input change', 'input, select', serialize );
+
+	// Keep part module checkboxes in sync when modules change.
+	$modules.on( 'input change', '.nx-module-name', refreshPartModules );
+
+	$( '#neximan-add-module' ).on( 'click', function () {
+		$modules.append( moduleRow( { id: uid( 'mod' ) } ) );
+		refreshPartModules();
+		serialize();
+	} );
 
 	$( '#neximan-add-color' ).on( 'click', function () {
 		$colors.append( colorRow( { id: uid( 'c' ) } ) );
@@ -309,9 +457,13 @@
 		serialize();
 	} );
 
-	// Remove a simple row (color / choice / layout).
+	// Remove a simple row (module / color / choice / part).
 	$root.on( 'click', '.nx-remove', function () {
+		var inModules = $( this ).closest( '#neximan-modules' ).length > 0;
 		$( this ).closest( '.neximan-row' ).remove();
+		if ( inModules ) {
+			refreshPartModules();
+		}
 		serialize();
 	} );
 
@@ -337,9 +489,21 @@
 		}
 	} );
 
+	// Remove a layout.
+	$models.on( 'click', '.nx-remove-layout', function () {
+		$( this ).closest( '.neximan-layout-block' ).remove();
+		serialize();
+	} );
+
 	// Add a layout to a model.
 	$models.on( 'click', '.nx-add-layout', function () {
-		$( this ).closest( '.neximan-model' ).find( '.neximan-layouts' ).append( layoutRow( { id: uid( 'l' ) } ) );
+		$( this ).closest( '.neximan-model' ).find( '.neximan-layouts' ).append( layoutBlock( { id: uid( 'l' ) } ) );
+		serialize();
+	} );
+
+	// Add a composition part to a layout.
+	$models.on( 'click', '.nx-add-part', function () {
+		$( this ).closest( '.neximan-layout-block' ).find( '.neximan-parts-admin' ).append( partRow( { id: uid( 'p' ) } ) );
 		serialize();
 	} );
 
@@ -347,7 +511,7 @@
 	$models.on( 'click', '.nx-add-standard', function () {
 		var $layouts = $( this ).closest( '.neximan-model' ).find( '.neximan-layouts' );
 		( admin.standardLayouts || [] ).forEach( function ( label ) {
-			$layouts.append( layoutRow( { id: uid( 'l' ), label: label } ) );
+			$layouts.append( layoutBlock( { id: uid( 'l' ), label: label } ) );
 		} );
 		serialize();
 	} );
@@ -355,7 +519,7 @@
 	// Media uploader for layout images.
 	var frame = null;
 	$models.on( 'click', '.nx-pick-image', function () {
-		var $row = $( this ).closest( '.neximan-layout-row' );
+		var $block = $( this ).closest( '.neximan-layout-block' );
 
 		frame = wp.media( {
 			title: i18n.selectImage || 'Select Image',
@@ -365,9 +529,9 @@
 
 		frame.on( 'select', function () {
 			var attachment = frame.state().get( 'selection' ).first().toJSON();
-			$row.find( '.nx-layout-image' ).val( attachment.url );
-			$row.attr( 'data-image-id', attachment.id );
-			$row.find( '.nx-thumb' ).css( 'background-image', "url('" + attachment.url + "')" );
+			$block.find( '.nx-layout-image' ).first().val( attachment.url );
+			$block.attr( 'data-image-id', attachment.id );
+			$block.find( '.nx-thumb' ).first().css( 'background-image', "url('" + attachment.url + "')" );
 			serialize();
 		} );
 

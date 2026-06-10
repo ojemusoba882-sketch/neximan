@@ -81,7 +81,14 @@ class WooCommerce {
 			}
 		}
 
-		$resolved = Config::compute_from_manifest( $manifest, $series_id, $model_id, $layout_id, $color_id, $option_sel );
+		$part_sel = array();
+		if ( isset( $_POST['parts'] ) && is_array( $_POST['parts'] ) ) {
+			foreach ( wp_unslash( $_POST['parts'] ) as $part_id => $module_id ) {
+				$part_sel[ sanitize_text_field( $part_id ) ] = sanitize_text_field( $module_id );
+			}
+		}
+
+		$resolved = Config::compute_from_manifest( $manifest, $series_id, $model_id, $layout_id, $color_id, $option_sel, $part_sel );
 		if ( null === $resolved ) {
 			wp_send_json_error( array( 'message' => __( 'Selected configuration is not valid.', 'neximan-builder' ) ) );
 		}

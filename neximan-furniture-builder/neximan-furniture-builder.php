@@ -83,6 +83,39 @@ function neximan_builder_activate() {
 			'layout' => '',
 			'color'  => '',
 		),
+		// Building blocks with prices (fully editable in the form).
+		'modules'      => array(
+			array(
+				'id'    => 'seat60',
+				'name'  => 'نشیمن ۶۰',
+				'price' => 2500000,
+			),
+			array(
+				'id'    => 'seat85',
+				'name'  => 'نشیمن ۸۵',
+				'price' => 3200000,
+			),
+			array(
+				'id'    => 'corner',
+				'name'  => 'کنج (۲ پشتی)',
+				'price' => 3800000,
+			),
+			array(
+				'id'    => 'pouf60',
+				'name'  => 'پاف ۶۰',
+				'price' => 1800000,
+			),
+			array(
+				'id'    => 'pouf85',
+				'name'  => 'پاف ۸۵',
+				'price' => 2200000,
+			),
+			array(
+				'id'    => 'sidetable',
+				'name'  => 'میز عسلی',
+				'price' => 1500000,
+			),
+		),
 		'colors'       => array(
 			array(
 				'id'    => 'cblack',
@@ -109,56 +142,80 @@ function neximan_builder_activate() {
 				'price' => 0,
 			),
 		),
-		'options'      => array(
-			array(
-				'id'      => 'gsize',
-				'label'   => 'سایز',
-				'varAttr' => '',
-				'choices' => array(
-					array(
-						'id'    => 's75',
-						'name'  => '۷۵ سانت',
-						'price' => 0,
-					),
-					array(
-						'id'    => 's90',
-						'name'  => '۹۰ سانت',
-						'price' => 500000,
-					),
-				),
-			),
-		),
+		'options'      => array(),
 		'models'       => array(
 			array(
 				'id'        => 'msofa',
 				'name'      => 'مبل',
 				'type'      => 'sofa',
-				'basePrice' => 8000000,
+				'basePrice' => 0,
 				'wooId'     => 0,
 				'layouts'   => array(
+					// 2-seater: two middle seats, each selectable 60/85.
 					array(
 						'id'    => 'l2',
 						'label' => '۲ نفره',
 						'image' => '',
 						'price' => 0,
+						'parts' => array(
+							array(
+								'id'        => 'l2p1',
+								'label'     => 'سایز نشیمن',
+								'qty'       => 2,
+								'moduleIds' => array( 'seat60', 'seat85' ),
+							),
+						),
 					),
+					// 3-seater: three middle seats, selectable 60/85.
 					array(
 						'id'    => 'l3',
 						'label' => '۳ نفره',
 						'image' => '',
-						'price' => 1500000,
+						'price' => 0,
+						'parts' => array(
+							array(
+								'id'        => 'l3p1',
+								'label'     => 'سایز نشیمن',
+								'qty'       => 3,
+								'moduleIds' => array( 'seat60', 'seat85' ),
+							),
+						),
 					),
+					// 4-seater.
 					array(
 						'id'    => 'l4',
 						'label' => '۴ نفره',
 						'image' => '',
-						'price' => 3000000,
+						'price' => 0,
+						'parts' => array(
+							array(
+								'id'        => 'l4p1',
+								'label'     => 'سایز نشیمن',
+								'qty'       => 4,
+								'moduleIds' => array( 'seat60', 'seat85' ),
+							),
+						),
 					),
+					// L-shape / corner: one fixed corner + two selectable seats.
 					array(
 						'id'    => 'll',
-						'label' => 'L شکل',
+						'label' => 'L / کنج',
 						'image' => '',
-						'price' => 4500000,
+						'price' => 0,
+						'parts' => array(
+							array(
+								'id'        => 'llp1',
+								'label'     => 'کنج',
+								'qty'       => 1,
+								'moduleIds' => array( 'corner' ),
+							),
+							array(
+								'id'        => 'llp2',
+								'label'     => 'سایز نشیمن',
+								'qty'       => 2,
+								'moduleIds' => array( 'seat60', 'seat85' ),
+							),
+						),
 					),
 				),
 			),
@@ -166,20 +223,22 @@ function neximan_builder_activate() {
 				'id'        => 'mtable',
 				'name'      => 'میز',
 				'type'      => 'table',
-				'basePrice' => 2000000,
+				'basePrice' => 0,
 				'wooId'     => 0,
 				'layouts'   => array(
 					array(
-						'id'    => 'tround',
-						'label' => 'گرد',
+						'id'    => 'tcoffee',
+						'label' => 'میز عسلی',
 						'image' => '',
 						'price' => 0,
-					),
-					array(
-						'id'    => 'trect',
-						'label' => 'مستطیل',
-						'image' => '',
-						'price' => 500000,
+						'parts' => array(
+							array(
+								'id'        => 'tp1',
+								'label'     => 'میز',
+								'qty'       => 1,
+								'moduleIds' => array( 'sidetable' ),
+							),
+						),
 					),
 				),
 			),

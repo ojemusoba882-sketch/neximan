@@ -107,6 +107,7 @@
 			seriesTabs: root.querySelector( '.neximan-series-tabs' ),
 			modelTabs: root.querySelector( '.neximan-model-tabs' ),
 			layouts: root.querySelector( '.neximan-layout-options' ),
+			parts: root.querySelector( '.neximan-parts' ),
 			options: root.querySelector( '.neximan-options' ),
 			colors: root.querySelector( '.neximan-color-options' ),
 			infoLayout: root.querySelector( '.neximan-info-layout' ),
@@ -116,7 +117,27 @@
 			feedback: root.querySelector( '.neximan-feedback' )
 		};
 
-		var state = { seriesIndex: 0, modelId: '', layoutId: '', colorId: '', options: {} };
+		var state = { seriesIndex: 0, modelId: '', layoutId: '', colorId: '', options: {}, partSel: {} };
+
+		/**
+		 * Returns a module (building block) from the active series by id.
+		 *
+		 * @param {string} id Module id.
+		 * @return {Object|null} Module.
+		 */
+		function moduleById( id ) {
+			return byId( activeSeries().modules || [], id );
+		}
+
+		/**
+		 * Returns the active layout object.
+		 *
+		 * @return {Object|null} Layout.
+		 */
+		function activeLayout() {
+			var model = activeModel();
+			return model ? byId( model.layouts, state.layoutId ) : null;
+		}
 
 		/**
 		 * Returns the active series object.
@@ -149,6 +170,14 @@
 				var layout = byId( model.layouts, state.layoutId );
 				if ( layout ) {
 					total += parseFloat( layout.price ) || 0;
+					// Composition parts: qty x selected module price.
+					( layout.parts || [] ).forEach( function ( part ) {
+						var modId = selectedModuleForPart( part );
+						var mod = modId ? moduleById( modId ) : null;
+						if ( mod ) {
+							total += ( parseFloat( mod.price ) || 0 ) * ( parseInt( part.qty, 10 ) || 1 );
+						}
+					} );
 				}
 			}
 			var color = byId( activeSeries().colors, state.colorId );
@@ -162,6 +191,21 @@
 				}
 			} );
 			return total;
+		}
+
+		/**
+		 * Returns the selected module id for a composition part (or its default).
+		 *
+		 * @param {Object} part Part object.
+		 * @return {string} Module id.
+		 */
+		function selectedModuleForPart( part ) {
+			var ids = part.moduleIds || [];
+			if ( ! ids.length ) {
+				return '';
+			}
+			var sel = state.partSel[ part.id ];
+			return ( sel && ids.indexOf( sel ) !== -1 ) ? sel : ids[ 0 ];
 		}
 
 		/**
@@ -215,9 +259,86 @@
 				btn.addEventListener( 'click', function () {
 					state.layoutId = layout.id;
 					markActive( els.layouts, 'neximan-layout-btn', btn );
-					renderPreview();
+					applyLayout();
 				} );
 				els.layouts.appendChild( btn );
+			} );
+		}
+
+		/**
+		 * Resets part selections for the active layout to defaults and renders
+		 * the composition selectors and preview.
+		 *
+		 * @return {void}
+		 */
+		function applyLayout() {
+			var layout = activeLayout();
+			state.partSel = {};
+			if ( layout ) {
+				( layout.parts || [] ).forEach( function ( part ) {
+					if ( part.moduleIds && part.moduleIds.length ) {
+						state.partSel[ part.id ] = part.moduleIds[ 0 ];
+					}
+				} );
+			}
+			renderParts();
+			renderPreview();
+		}
+
+		/**
+		 * Renders selectable composition parts (e.g. seat size 60/85) for the
+		 * active layout. Parts with a single module are fixed and not shown.
+		 *
+		 * @return {void}
+		 */
+		function renderParts() {
+			if ( ! els.parts ) {
+				return;
+			}
+			els.parts.innerHTML = '';
+			var layout = activeLayout();
+			if ( ! layout ) {
+				return;
+			}
+
+			( layout.parts || [] ).forEach( function ( part ) {
+				if ( ! part.moduleIds || part.moduleIds.length < 2 ) {
+					return; // Fixed part: contributes to price but no selector.
+				}
+
+				var section = document.createElement( 'div' );
+				section.className = 'neximan-control-section';
+
+				var label = document.createElement( 'label' );
+				label.className = 'neximan-control-label';
+				label.textContent = part.label || '';
+				section.appendChild( label );
+
+				var row = document.createElement( 'div' );
+				row.className = 'neximan-option-choices';
+
+				part.moduleIds.forEach( function ( modId ) {
+					var mod = moduleById( modId );
+					if ( ! mod ) {
+						return;
+					}
+					var btn = makeButton( 'neximan-option-btn', mod.name, {
+						'data-part': part.id,
+						'data-module': modId
+					} );
+					if ( state.partSel[ part.id ] === modId ) {
+						btn.classList.add( 'is-active' );
+					}
+					btn.addEventListener( 'click', function () {
+						state.partSel[ part.id ] = modId;
+						markActive( row, 'neximan-option-btn', btn );
+						renderPreview();
+					} );
+					row.appendChild( btn );
+				} );
+
+				section.appendChild( row );
+				els.parts.appendChild( section );
 			} );
 		}
 
@@ -388,7 +509,7 @@
 			var model = activeModel();
 			state.layoutId = ( model && model.layouts.length ) ? model.layouts[ 0 ].id : '';
 			renderLayouts();
-			renderPreview();
+			applyLayout();
 		}
 
 		/**
@@ -443,6 +564,9 @@
 			body.append( 'color', state.colorId );
 			Object.keys( state.options ).forEach( function ( groupId ) {
 				body.append( 'options[' + groupId + ']', state.options[ groupId ] );
+			} );
+			Object.keys( state.partSel ).forEach( function ( partId ) {
+				body.append( 'parts[' + partId + ']', state.partSel[ partId ] );
 			} );
 
 			fetch( settings.ajaxUrl, {
