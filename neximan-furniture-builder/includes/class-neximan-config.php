@@ -207,6 +207,7 @@ class Config {
 		$manifest = array(
 			'woo'    => array(
 				'fallbackProduct' => isset( $woo['fallbackProduct'] ) ? (int) $woo['fallbackProduct'] : 0,
+				'forceProduct'    => isset( $woo['forceProduct'] ) ? (int) $woo['forceProduct'] : 0,
 			),
 			'series' => array(),
 		);
@@ -384,6 +385,11 @@ class Config {
 		$product_id = ! empty( $model['wooId'] ) ? (int) $model['wooId'] : (int) $series['wooId'];
 		if ( ! $product_id ) {
 			$product_id = (int) $manifest['woo']['fallbackProduct'];
+		}
+
+		// A forced product (single product page binding) always wins.
+		if ( ! empty( $manifest['woo']['forceProduct'] ) ) {
+			$product_id = (int) $manifest['woo']['forceProduct'];
 		}
 
 		return array(

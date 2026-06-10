@@ -727,6 +727,18 @@ class Builder_Widget extends Widget_Base {
 		);
 
 		$this->add_control(
+			'bind_current_product',
+			array(
+				'label'        => __( 'Bind to Current Product', 'neximan-builder' ),
+				'type'         => Controls_Manager::SWITCHER,
+				'return_value' => 'yes',
+				'default'      => 'no',
+				'description'  => __( 'When placed on a WooCommerce single product page, add THIS product to the cart with the chosen configuration (overrides series/model/fallback product IDs).', 'neximan-builder' ),
+				'condition'    => array( 'woo_action!' => 'none' ),
+			)
+		);
+
+		$this->add_control(
 			'woo_fallback_product',
 			array(
 				'label'       => __( 'Fallback Product ID', 'neximan-builder' ),
@@ -734,7 +746,10 @@ class Builder_Widget extends Widget_Base {
 				'description' => __( 'Used when a model/series has no specific product. Useful for dynamic-priced custom products.', 'neximan-builder' ),
 				'min'         => 0,
 				'step'        => 1,
-				'condition'   => array( 'woo_action!' => 'none' ),
+				'condition'   => array(
+					'woo_action!'          => 'none',
+					'bind_current_product!' => 'yes',
+				),
 			)
 		);
 
@@ -968,6 +983,7 @@ class Builder_Widget extends Widget_Base {
 			'woo'       => array(
 				'action'          => isset( $settings['woo_action'] ) ? $settings['woo_action'] : 'none',
 				'fallbackProduct' => isset( $settings['woo_fallback_product'] ) ? (int) $settings['woo_fallback_product'] : 0,
+				'forceProduct'    => 0,
 			),
 			'series'    => $series,
 		);
@@ -985,6 +1001,12 @@ class Builder_Widget extends Widget_Base {
 
 		$uid     = 'neximan-' . $this->get_id();
 		$post_id = get_the_ID();
+
+		// Single product page integration: force the current product.
+		if ( isset( $settings['bind_current_product'] ) && 'yes' === $settings['bind_current_product']
+			&& function_exists( 'is_product' ) && is_product() ) {
+			$config['woo']['forceProduct'] = (int) get_the_ID();
+		}
 
 		if ( empty( $config['series'] ) ) {
 			if ( \Elementor\Plugin::$instance->editor->is_edit_mode() ) {
