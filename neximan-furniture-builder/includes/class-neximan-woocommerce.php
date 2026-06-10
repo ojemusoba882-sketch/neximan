@@ -83,36 +83,44 @@ class WooCommerce {
 	}
 
 	/**
-	 * Returns the set of product/variation IDs currently in the cart as builder
-	 * items, so they can be kept purchasable across page loads.
+	 * Option key storing every product ID ever added through the builder, so it
+	 * can be kept purchasable on every request without depending on the cart
+	 * being loaded yet (which previously caused items to be dropped at checkout).
 	 *
-	 * @return int[]
+	 * @var string
 	 */
-	private function builder_cart_product_ids() {
-		$ids = array();
+	const PURCHASABLE_IDS_OPTION = 'neximan_purchasable_ids';
 
-		if ( ! function_exists( 'WC' ) || is_null( WC()->cart ) ) {
-			return $ids;
+	/**
+	 * Remembers a product ID as builder-purchasable.
+	 *
+	 * @param int $product_id Product ID.
+	 * @return void
+	 */
+	private function remember_purchasable( $product_id ) {
+		$product_id = (int) $product_id;
+		if ( ! $product_id ) {
+			return;
 		}
 
-		foreach ( WC()->cart->get_cart() as $cart_item ) {
-			if ( empty( $cart_item[ self::CART_KEY ] ) ) {
-				continue;
-			}
-			if ( ! empty( $cart_item['product_id'] ) ) {
-				$ids[] = (int) $cart_item['product_id'];
-			}
-			if ( ! empty( $cart_item['variation_id'] ) ) {
-				$ids[] = (int) $cart_item['variation_id'];
-			}
+		$ids = get_option( self::PURCHASABLE_IDS_OPTION, array() );
+		if ( ! is_array( $ids ) ) {
+			$ids = array();
 		}
 
-		return $ids;
+		if ( ! in_array( $product_id, $ids, true ) ) {
+			$ids[] = $product_id;
+			// Keep the list bounded.
+			if ( count( $ids ) > 500 ) {
+				$ids = array_slice( $ids, -500 );
+			}
+			update_option( self::PURCHASABLE_IDS_OPTION, $ids, false );
+		}
 	}
 
 	/**
-	 * Forces products that are present in the cart as builder items to stay
-	 * purchasable, preventing WooCommerce from removing dynamically-priced lines.
+	 * Forces products previously added through the builder to stay purchasable,
+	 * preventing WooCommerce from removing dynamically-priced lines at checkout.
 	 *
 	 * @param bool        $purchasable Current state.
 	 * @param \WC_Product $product     Product object.
@@ -123,8 +131,8 @@ class WooCommerce {
 			return $purchasable;
 		}
 
-		$ids = $this->builder_cart_product_ids();
-		if ( empty( $ids ) ) {
+		$ids = get_option( self::PURCHASABLE_IDS_OPTION, array() );
+		if ( ! is_array( $ids ) || empty( $ids ) ) {
 			return $purchasable;
 		}
 
@@ -206,6 +214,7 @@ class WooCommerce {
 		// makes WooCommerce treat them as not purchasable. Force purchasability
 		// and a non-empty price for the product being added during this request.
 		$this->forced_product_id = $product_id;
+		$this->remember_purchasable( $product_id );
 		add_filter( 'woocommerce_is_purchasable', array( $this, 'force_purchasable' ), 99, 2 );
 		add_filter( 'woocommerce_variation_is_purchasable', array( $this, 'force_purchasable' ), 99, 2 );
 
