@@ -1,0 +1,240 @@
+/**
+ * Neximan Furniture Builder - admin configuration UI styles.
+ */
+
+.neximan-admin .neximan-admin-row {
+	display: flex;
+	gap: 2rem;
+	flex-wrap: wrap;
+	margin: 1rem 0 1.5rem;
+}
+
+.neximan-admin .neximan-admin-row label {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	font-size: 13px;
+}
+
+.neximan-admin .neximan-admin-row input,
+.neximan-admin .neximan-admin-row select {
+	min-width: 220px;
+}
+
+.neximan-admin h3 {
+	margin: 1.5rem 0 0.5rem;
+	border-top: 1px solid #e2e4e7;
+	padding-top: 1rem;
+}
+
+.neximan-list {
+	margin-bottom: 0.75rem;
+}
+
+.neximan-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px;
+	background: #f6f7f7;
+	border: 1px solid #e2e4e7;
+	border-radius: 6px;
+	margin-bottom: 6px;
+}
+
+.neximan-row input[type="text"] {
+	flex: 1;
+	min-width: 120px;
+}
+
+.neximan-row input[type="number"] {
+	width: 110px;
+}
+
+.neximan-row .nx-thumb {
+	width: 46px;
+	height: 34px;
+	border-radius: 4px;
+	background: #fff center/contain no-repeat;
+	border: 1px solid #dcdcde;
+	flex: 0 0 auto;
+}
+
+.nx-remove,
+.nx-remove-model {
+	color: #b32d2e !important;
+	font-size: 20px !important;
+	line-height: 1;
+	text-decoration: none;
+	cursor: pointer;
+}
+
+.neximan-model {
+	border: 1px solid #c3c4c7;
+	border-radius: 8px;
+	padding: 12px;
+	margin-bottom: 14px;
+	background: #fff;
+}
+
+.neximan-model-head {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex-wrap: wrap;
+	margin-bottom: 10px;
+	padding-bottom: 10px;
+	border-bottom: 1px dashed #dcdcde;
+}
+
+.neximan-model-head .nx-model-name {
+	flex: 1;
+	min-width: 160px;
+	font-weight: 600;
+}
+
+.neximan-model-head .nx-inline {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	font-size: 12px;
+	color: #50575e;
+}
+
+.neximan-model-head .nx-inline input {
+	width: 110px;
+}
+
+.neximan-layouts {
+	margin-bottom: 8px;
+}
+
+.neximan-model-actions {
+	display: flex;
+	gap: 8px;
+}
+
+/* Option groups */
+.neximan-option-group .neximan-model-head .nx-group-label {
+	flex: 1;
+	min-width: 160px;
+	font-weight: 600;
+}
+
+.neximan-choices {
+	margin-bottom: 8px;
+}
+
+.neximan-row input.nx-color-var,
+.neximan-row input.nx-choice-var,
+.neximan-row input.nx-layout-var {
+	width: 110px;
+	flex: 0 0 auto;
+}
+
+.nx-remove-group {
+	color: #b32d2e !important;
+	font-size: 20px !important;
+	line-height: 1;
+	text-decoration: none;
+	cursor: pointer;
+}
+
+
+/* Modules & composition */
+.neximan-row input.nx-module-name {
+	flex: 1;
+}
+.neximan-row input.nx-module-price,
+.neximan-row input.nx-part-qty {
+	width: 90px;
+}
+
+.neximan-layout-block {
+	border: 1px solid #dcdcde;
+	border-radius: 6px;
+	padding: 8px;
+	margin-bottom: 8px;
+	background: #fbfbfc;
+}
+
+.neximan-parts-admin {
+	margin: 6px 0 6px 14px;
+	padding-left: 10px;
+	border-left: 3px solid #e2e4e7;
+}
+
+.neximan-part-row {
+	background: #fff;
+}
+
+.nx-part-modules {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px 12px;
+	flex: 1;
+	align-items: center;
+}
+
+.nx-modcheck {
+	font-size: 12px;
+	white-space: nowrap;
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+}
+
+.nx-empty {
+	color: #b32d2e;
+	font-size: 12px;
+}
+
+.nx-remove-layout {
+	color: #b32d2e !important;
+	font-size: 18px !important;
+	text-decoration: none;
+	line-height: 1;
+}
+
+
+/* Pricing mode: hide modular-only UI in simple mode */
+.neximan-admin.nx-mode-simple .neximan-modules-section,
+.neximan-admin.nx-mode-simple .neximan-parts-admin,
+.neximan-admin.nx-mode-simple .nx-add-part {
+	display: none;
+}
+
+
+/* Modern field labels inside rows */
+.neximan-row .nx-field {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	margin: 0;
+}
+
+.neximan-row .nx-field-grow {
+	flex: 1;
+}
+
+.neximan-row .nx-field-label {
+	font-size: 11px;
+	color: #646970;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.02em;
+}
+
+.neximan-row .nx-field input {
+	width: 100%;
+}
+
+.neximan-row .nx-field input[type="number"] {
+	width: 130px;
+}
+
+/* A bit more breathing room and a card feel for module rows */
+#neximan-modules .neximan-module-row {
+	align-items: flex-end;
+	padding: 10px;
+}
