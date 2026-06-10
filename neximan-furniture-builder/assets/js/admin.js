@@ -69,11 +69,13 @@
 		return $(
 			'<div class="neximan-row neximan-module-row" data-id="' + attr( id ) + '" data-image-id="' + attr( module.imageId || 0 ) + '">' +
 				'<span class="nx-thumb" style="' + ( image ? 'background-image:url(\'' + attr( image ) + '\')' : '' ) + '"></span>' +
-				'<input type="text" class="nx-module-name" placeholder="Seat 60 / Corner / ..." value="' + attr( module.name || '' ) + '" />' +
-				'<input type="number" class="nx-module-price" step="1" min="0" placeholder="price" value="' + attr( module.price || 0 ) + '" />' +
+				'<label class="nx-field nx-field-grow"><span class="nx-field-label">Name</span>' +
+					'<input type="text" class="nx-module-name" placeholder="e.g. Seat 60" value="' + attr( module.name || '' ) + '" /></label>' +
+				'<label class="nx-field"><span class="nx-field-label">Price</span>' +
+					'<input type="number" class="nx-module-price" step="1" min="0" placeholder="0" value="' + attr( module.price || 0 ) + '" /></label>' +
 				'<input type="hidden" class="nx-module-image" value="' + attr( image ) + '" />' +
 				'<button type="button" class="button nx-pick-mod-image">' + ( i18n.selectImage || 'Image' ) + '</button>' +
-				'<button type="button" class="button-link nx-remove" title="x">&times;</button>' +
+				'<button type="button" class="button-link nx-remove" title="Remove">&times;</button>' +
 			'</div>'
 		);
 	}

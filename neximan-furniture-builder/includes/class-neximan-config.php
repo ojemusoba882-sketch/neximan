@@ -36,6 +36,20 @@ class Config {
 	const POST_TYPE = 'neximan_product';
 
 	/**
+	 * JSON-encodes a value keeping UTF-8 (Persian) text readable.
+	 *
+	 * Using JSON_UNESCAPED_UNICODE prevents Persian characters from turning into
+	 * \uXXXX escapes, which previously rendered as garbled "u0646..." text in the
+	 * admin inputs and on the storefront.
+	 *
+	 * @param mixed $data Data to encode.
+	 * @return string
+	 */
+	public static function json( $data ) {
+		return wp_json_encode( $data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
+	}
+
+	/**
 	 * Returns the raw (decoded) config array for a series post.
 	 *
 	 * @param int $post_id Series post ID.

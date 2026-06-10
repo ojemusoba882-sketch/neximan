@@ -154,7 +154,7 @@ class CPT {
 		wp_nonce_field( self::NONCE, self::NONCE );
 
 		$config = Config::get_raw( $post->ID );
-		$json   = wp_json_encode( $config );
+		$json   = Config::json( $config );
 		?>
 		<div class="neximan-admin" id="neximan-admin">
 			<p class="description">
@@ -206,7 +206,7 @@ class CPT {
 			<button type="button" class="button" id="neximan-add-color"><?php esc_html_e( '+ Add Color', 'neximan-builder' ); ?></button>
 
 			<h3><?php esc_html_e( 'Option Groups (Size, etc.)', 'neximan-builder' ); ?></h3>
-			<p class="description"><?php esc_html_e( 'Add as many option groups as you need (e.g. Size 75/90 cm, leg type, ...). Each choice can change the price and map to a WooCommerce variation value.', 'neximan-builder' ); ?></p>
+			<p class="description"><?php esc_html_e( 'Add as many option groups as you need (e.g. Size 60/85 cm, leg type, ...). Each choice can change the price and map to a WooCommerce variation value.', 'neximan-builder' ); ?></p>
 			<div id="neximan-options" class="neximan-list"></div>
 			<button type="button" class="button" id="neximan-add-option"><?php esc_html_e( '+ Add Option Group', 'neximan-builder' ); ?></button>
 
@@ -247,6 +247,6 @@ class CPT {
 
 		$clean = Config::sanitize( is_array( $raw ) ? $raw : array() );
 
-		update_post_meta( $post_id, Config::META_KEY, wp_json_encode( $clean ) );
+		update_post_meta( $post_id, Config::META_KEY, Config::json( $clean ) );
 	}
 }

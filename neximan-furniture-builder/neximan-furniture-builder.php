@@ -3,7 +3,7 @@
  * Plugin Name: Neximan Furniture Builder
  * Plugin URI:  https://github.com/ojemusoba882-sketch/neximan
  * Description: A standalone Elementor widget to build configurable furniture (sofas, tables, ...) with dynamic pricing and WooCommerce cart/checkout integration.
- * Version:     1.3.0
+ * Version:     1.4.0
  * Author:      Neximan
  * Text Domain: neximan-builder
  * Domain Path: /languages
@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit; // No direct access.
 }
 
-define( 'NEXIMAN_BUILDER_VERSION', '1.3.0' );
+define( 'NEXIMAN_BUILDER_VERSION', '1.4.0' );
 define( 'NEXIMAN_BUILDER_FILE', __FILE__ );
 define( 'NEXIMAN_BUILDER_PATH', plugin_dir_path( __FILE__ ) );
 define( 'NEXIMAN_BUILDER_URL', plugin_dir_url( __FILE__ ) );
@@ -87,57 +87,57 @@ function neximan_builder_activate() {
 		'modules'      => array(
 			array(
 				'id'    => 'seat60',
-				'name'  => 'نشیمن ۶۰',
+				'name'  => 'Seat 60',
 				'price' => 2500000,
 			),
 			array(
 				'id'    => 'seat85',
-				'name'  => 'نشیمن ۸۵',
+				'name'  => 'Seat 85',
 				'price' => 3200000,
 			),
 			array(
 				'id'    => 'corner',
-				'name'  => 'کنج (۲ پشتی)',
+				'name'  => 'Corner (2 backrests)',
 				'price' => 3800000,
 			),
 			array(
 				'id'    => 'pouf60',
-				'name'  => 'پاف ۶۰',
+				'name'  => 'Pouf 60',
 				'price' => 1800000,
 			),
 			array(
 				'id'    => 'pouf85',
-				'name'  => 'پاف ۸۵',
+				'name'  => 'Pouf 85',
 				'price' => 2200000,
 			),
 			array(
 				'id'    => 'sidetable',
-				'name'  => 'میز عسلی',
+				'name'  => 'Coffee table',
 				'price' => 1500000,
 			),
 		),
 		'colors'       => array(
 			array(
 				'id'    => 'cblack',
-				'name'  => 'مشکی',
+				'name'  => 'Black',
 				'value' => '#4a4a4a',
 				'price' => 0,
 			),
 			array(
 				'id'    => 'cgreen',
-				'name'  => 'سبز',
+				'name'  => 'Green',
 				'value' => '#9bb89b',
 				'price' => 0,
 			),
 			array(
 				'id'    => 'ccream',
-				'name'  => 'کرم',
+				'name'  => 'Cream',
 				'value' => '#f0e6d6',
 				'price' => 0,
 			),
 			array(
 				'id'    => 'choney',
-				'name'  => 'عسلی',
+				'name'  => 'Honey',
 				'value' => '#e9b576',
 				'price' => 0,
 			),
@@ -146,7 +146,7 @@ function neximan_builder_activate() {
 		'models'       => array(
 			array(
 				'id'        => 'msofa',
-				'name'      => 'مبل',
+				'name'      => 'Sofa',
 				'type'      => 'sofa',
 				'basePrice' => 0,
 				'wooId'     => 0,
@@ -154,13 +154,13 @@ function neximan_builder_activate() {
 					// تک نفره: one seat, selectable 60/85.
 					array(
 						'id'    => 'l1',
-						'label' => 'تک نفره',
+						'label' => 'Single',
 						'image' => '',
 						'price' => 0,
 						'parts' => array(
 							array(
 								'id'        => 'l1p1',
-								'label'     => 'سایز نشیمن',
+								'label'     => 'Seat size',
 								'qty'       => 1,
 								'moduleIds' => array( 'seat60', 'seat85' ),
 							),
@@ -169,13 +169,13 @@ function neximan_builder_activate() {
 					// تک نفره کنج: a single corner module.
 					array(
 						'id'    => 'lcorner',
-						'label' => 'تک نفره کنج',
+						'label' => 'Single corner',
 						'image' => '',
 						'price' => 0,
 						'parts' => array(
 							array(
 								'id'        => 'lcp1',
-								'label'     => 'کنج',
+								'label'     => 'Corner',
 								'qty'       => 1,
 								'moduleIds' => array( 'corner' ),
 							),
@@ -184,13 +184,13 @@ function neximan_builder_activate() {
 					// دو نفره.
 					array(
 						'id'    => 'l2',
-						'label' => 'دو نفره',
+						'label' => '2-seater',
 						'image' => '',
 						'price' => 0,
 						'parts' => array(
 							array(
 								'id'        => 'l2p1',
-								'label'     => 'سایز نشیمن',
+								'label'     => 'Seat size',
 								'qty'       => 2,
 								'moduleIds' => array( 'seat60', 'seat85' ),
 							),
@@ -199,19 +199,19 @@ function neximan_builder_activate() {
 					// دو نفره با پاف.
 					array(
 						'id'    => 'l2p',
-						'label' => 'دو نفره با پاف',
+						'label' => '2-seater + pouf',
 						'image' => '',
 						'price' => 0,
 						'parts' => array(
 							array(
 								'id'        => 'l2pp1',
-								'label'     => 'سایز نشیمن',
+								'label'     => 'Seat size',
 								'qty'       => 2,
 								'moduleIds' => array( 'seat60', 'seat85' ),
 							),
 							array(
 								'id'        => 'l2pp2',
-								'label'     => 'پاف',
+								'label'     => 'Pouf',
 								'qty'       => 1,
 								'moduleIds' => array( 'pouf60', 'pouf85' ),
 							),
@@ -220,13 +220,13 @@ function neximan_builder_activate() {
 					// سه نفره (size selector covers کوتاه/بلند).
 					array(
 						'id'    => 'l3',
-						'label' => 'سه نفره',
+						'label' => '3-seater',
 						'image' => '',
 						'price' => 0,
 						'parts' => array(
 							array(
 								'id'        => 'l3p1',
-								'label'     => 'سایز نشیمن',
+								'label'     => 'Seat size',
 								'qty'       => 3,
 								'moduleIds' => array( 'seat60', 'seat85' ),
 							),
@@ -235,19 +235,19 @@ function neximan_builder_activate() {
 					// سه نفره با پاف.
 					array(
 						'id'    => 'l3p',
-						'label' => 'سه نفره با پاف',
+						'label' => '3-seater + pouf',
 						'image' => '',
 						'price' => 0,
 						'parts' => array(
 							array(
 								'id'        => 'l3pp1',
-								'label'     => 'سایز نشیمن',
+								'label'     => 'Seat size',
 								'qty'       => 3,
 								'moduleIds' => array( 'seat60', 'seat85' ),
 							),
 							array(
 								'id'        => 'l3pp2',
-								'label'     => 'پاف',
+								'label'     => 'Pouf',
 								'qty'       => 1,
 								'moduleIds' => array( 'pouf60', 'pouf85' ),
 							),
@@ -256,13 +256,13 @@ function neximan_builder_activate() {
 					// چهار نفره.
 					array(
 						'id'    => 'l4',
-						'label' => 'چهار نفره',
+						'label' => '4-seater',
 						'image' => '',
 						'price' => 0,
 						'parts' => array(
 							array(
 								'id'        => 'l4p1',
-								'label'     => 'سایز نشیمن',
+								'label'     => 'Seat size',
 								'qty'       => 4,
 								'moduleIds' => array( 'seat60', 'seat85' ),
 							),
@@ -271,13 +271,13 @@ function neximan_builder_activate() {
 					// پنج نفره.
 					array(
 						'id'    => 'l5',
-						'label' => 'پنج نفره',
+						'label' => '5-seater',
 						'image' => '',
 						'price' => 0,
 						'parts' => array(
 							array(
 								'id'        => 'l5p1',
-								'label'     => 'سایز نشیمن',
+								'label'     => 'Seat size',
 								'qty'       => 5,
 								'moduleIds' => array( 'seat60', 'seat85' ),
 							),
@@ -286,19 +286,19 @@ function neximan_builder_activate() {
 					// L / کنج: one corner + selectable seats.
 					array(
 						'id'    => 'll',
-						'label' => 'L / کنج',
+						'label' => 'L-shape / corner',
 						'image' => '',
 						'price' => 0,
 						'parts' => array(
 							array(
 								'id'        => 'llp1',
-								'label'     => 'کنج',
+								'label'     => 'Corner',
 								'qty'       => 1,
 								'moduleIds' => array( 'corner' ),
 							),
 							array(
 								'id'        => 'llp2',
-								'label'     => 'سایز نشیمن',
+								'label'     => 'Seat size',
 								'qty'       => 2,
 								'moduleIds' => array( 'seat60', 'seat85' ),
 							),
@@ -308,20 +308,20 @@ function neximan_builder_activate() {
 			),
 			array(
 				'id'        => 'mtable',
-				'name'      => 'میز',
+				'name'      => 'Table',
 				'type'      => 'table',
 				'basePrice' => 0,
 				'wooId'     => 0,
 				'layouts'   => array(
 					array(
 						'id'    => 'tcoffee',
-						'label' => 'میز عسلی',
+						'label' => 'Coffee table',
 						'image' => '',
 						'price' => 0,
 						'parts' => array(
 							array(
 								'id'        => 'tp1',
-								'label'     => 'میز',
+								'label'     => 'Table',
 								'qty'       => 1,
 								'moduleIds' => array( 'sidetable' ),
 							),
@@ -336,13 +336,13 @@ function neximan_builder_activate() {
 	$post_id = wp_insert_post(
 		array(
 			'post_type'   => \Neximan\Builder\Config::POST_TYPE,
-			'post_title'  => 'نوا (نمونه)',
+			'post_title'  => 'Noah (sample)',
 			'post_status' => 'publish',
 		)
 	);
 
 	if ( $post_id && ! is_wp_error( $post_id ) ) {
-		update_post_meta( $post_id, \Neximan\Builder\Config::META_KEY, wp_json_encode( $clean ) );
+		update_post_meta( $post_id, \Neximan\Builder\Config::META_KEY, \Neximan\Builder\Config::json( $clean ) );
 	}
 }
 register_activation_hook( __FILE__, 'neximan_builder_activate' );

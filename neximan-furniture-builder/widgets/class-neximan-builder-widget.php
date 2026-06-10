@@ -929,7 +929,7 @@ class Builder_Widget extends Widget_Base {
 		// this manifest server-side; signing the exact JSON string lets the
 		// client echo it back without serialization mismatches.
 		$manifest      = Config::build_manifest( $config['series'], $config['woo'] );
-		$manifest_json = wp_json_encode( $manifest );
+		$manifest_json = Config::json( $manifest );
 		$signature     = Config::sign_json( $manifest_json );
 		?>
 		<div id="<?php echo esc_attr( $uid ); ?>"
@@ -1002,7 +1002,7 @@ class Builder_Widget extends Widget_Base {
 				</div>
 			</div>
 
-			<script type="application/json" class="neximan-config"><?php echo wp_json_encode( $config ); ?></script>
+			<script type="application/json" class="neximan-config"><?php echo Config::json( $config ); ?></script>
 			<script type="application/json" class="neximan-manifest"><?php echo $manifest_json; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- JSON, signed and consumed verbatim. ?></script>
 		</div>
 		<?php

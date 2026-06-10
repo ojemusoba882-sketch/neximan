@@ -203,3 +203,38 @@
 .neximan-admin.nx-mode-simple .nx-add-part {
 	display: none;
 }
+
+
+/* Modern field labels inside rows */
+.neximan-row .nx-field {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	margin: 0;
+}
+
+.neximan-row .nx-field-grow {
+	flex: 1;
+}
+
+.neximan-row .nx-field-label {
+	font-size: 11px;
+	color: #646970;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.02em;
+}
+
+.neximan-row .nx-field input {
+	width: 100%;
+}
+
+.neximan-row .nx-field input[type="number"] {
+	width: 130px;
+}
+
+/* A bit more breathing room and a card feel for module rows */
+#neximan-modules .neximan-module-row {
+	align-items: flex-end;
+	padding: 10px;
+}
