@@ -106,8 +106,6 @@ class WooCommerce {
 		if ( ! $product ) {
 			wp_send_json_error( array( 'message' => __( 'The linked product was not found.', 'neximan-builder' ) ) );
 		}
-
-		// Resolve a matching variation when applicable.
 		$variation_id    = 0;
 		$variation_attrs = array();
 		if ( $product->is_type( 'variable' ) && ! empty( $resolved['variation_attr'] ) ) {
@@ -143,10 +141,32 @@ class WooCommerce {
 
 		$cart_item_data = array( self::CART_KEY => $selection );
 
+		// Surface WooCommerce's own reason instead of a generic message.
+		if ( function_exists( 'wc_clear_notices' ) ) {
+			wc_clear_notices();
+		}
+
 		$added = WC()->cart->add_to_cart( $product_id, 1, $variation_id, $variation_attrs, $cart_item_data );
 
 		if ( ! $added ) {
-			wp_send_json_error( array( 'message' => __( 'Could not add the item to the cart.', 'neximan-builder' ) ) );
+			$reason = '';
+			if ( function_exists( 'wc_get_notices' ) ) {
+				$notices = wc_get_notices( 'error' );
+				if ( ! empty( $notices ) ) {
+					$parts = array();
+					foreach ( $notices as $notice ) {
+						$parts[] = is_array( $notice ) && isset( $notice['notice'] ) ? wp_strip_all_tags( $notice['notice'] ) : wp_strip_all_tags( (string) $notice );
+					}
+					$reason = implode( ' ', $parts );
+				}
+				wc_clear_notices();
+			}
+
+			wp_send_json_error(
+				array(
+					'message' => $reason ? $reason : __( 'Could not add the item to the cart. Make sure the linked product is published and purchasable.', 'neximan-builder' ),
+				)
+			);
 		}
 
 		wp_send_json_success(

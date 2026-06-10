@@ -110,7 +110,6 @@ class Builder_Widget extends Widget_Base {
 		$this->register_layout_controls();
 		$this->register_module_controls();
 		$this->register_color_controls();
-		$this->register_options_controls();
 		$this->register_woocommerce_controls();
 		$this->register_style_controls();
 	}
@@ -327,9 +326,18 @@ class Builder_Widget extends Widget_Base {
 		$this->start_controls_section(
 			'section_layouts',
 			array(
-				'label'     => __( 'Layout Options', 'neximan-builder' ),
+				'label'     => __( 'Arrangements', 'neximan-builder' ),
 				'tab'       => Controls_Manager::TAB_CONTENT,
 				'condition' => array( 'data_source' => 'inline' ),
+			)
+		);
+
+		$this->add_control(
+			'layouts_help',
+			array(
+				'type'            => Controls_Manager::RAW_HTML,
+				'raw'             => __( 'Each arrangement (2-seater, L-shape, coffee table, ...) is a button. Set its image, base price and (optionally) which seat sizes are available so the size buttons appear and adjust the price.', 'neximan-builder' ),
+				'content_classes' => 'elementor-descriptor',
 			)
 		);
 
@@ -346,88 +354,39 @@ class Builder_Widget extends Widget_Base {
 		);
 
 		$repeater->add_control(
-			'layout_slot',
+			'layout_image',
 			array(
-				'label'       => __( 'Image Slot', 'neximan-builder' ),
-				'type'        => Controls_Manager::NUMBER,
-				'description' => __( 'Slot number (1-8). The matching "Layout Image (Slot N)" inside each Model is used for this layout.', 'neximan-builder' ),
-				'default'     => 1,
-				'min'         => 1,
-				'max'         => self::MAX_SLOTS,
-				'step'        => 1,
+				'label'   => __( 'Image', 'neximan-builder' ),
+				'type'    => Controls_Manager::MEDIA,
+				'default' => array( 'url' => '' ),
 			)
 		);
 
 		$repeater->add_control(
 			'layout_price',
 			array(
-				'label'   => __( 'Price Modifier', 'neximan-builder' ),
-				'type'    => Controls_Manager::NUMBER,
-				'default' => 0,
-				'min'     => 0,
-				'step'    => 1,
-			)
-		);
-
-		$this->add_control(
-			'layouts',
-			array(
-				'type'        => Controls_Manager::REPEATER,
-				'fields'      => $repeater->get_controls(),
-				'title_field' => '{{{ layout_label }}}',
-				'default'     => array(
-					array(
-						'layout_label' => __( '۲ نفره', 'neximan-builder' ),
-						'layout_slot'  => 1,
-					),
-					array(
-						'layout_label' => __( '۳ نفره', 'neximan-builder' ),
-						'layout_slot'  => 2,
-					),
-					array(
-						'layout_label' => __( '۴ نفره', 'neximan-builder' ),
-						'layout_slot'  => 3,
-					),
-					array(
-						'layout_label' => __( 'L شکل', 'neximan-builder' ),
-						'layout_slot'  => 4,
-					),
-				),
-			)
-		);
-
-		$this->end_controls_section();
-	}
-
-	/**
-	 * Inline model controls.
-	 *
-	 * @return void
-	 */
-	private function register_module_controls() {
-		$this->start_controls_section(
-			'section_modules',
-			array(
-				'label'     => __( 'Models', 'neximan-builder' ),
-				'tab'       => Controls_Manager::TAB_CONTENT,
-				'condition' => array( 'data_source' => 'inline' ),
-			)
-		);
-
-		$repeater = new Repeater();
-
-		$repeater->add_control(
-			'module_name',
-			array(
-				'label'       => __( 'Model Name (tab)', 'neximan-builder' ),
-				'type'        => Controls_Manager::TEXT,
-				'default'     => __( 'مدل ۱', 'neximan-builder' ),
-				'label_block' => true,
+				'label'       => __( 'Base Price', 'neximan-builder' ),
+				'type'        => Controls_Manager::NUMBER,
+				'description' => __( 'Price of this arrangement before size/color modifiers.', 'neximan-builder' ),
+				'default'     => 0,
+				'min'         => 0,
+				'step'        => 1,
 			)
 		);
 
 		$repeater->add_control(
-			'module_type',
+			'layout_has_size',
+			array(
+				'label'        => __( 'Has Seat Size?', 'neximan-builder' ),
+				'type'         => Controls_Manager::SWITCHER,
+				'return_value' => 'yes',
+				'default'      => 'yes',
+				'description'  => __( 'Show 60/85 seat-size buttons for this arrangement.', 'neximan-builder' ),
+			)
+		);
+
+		$repeater->add_control(
+			'layout_type',
 			array(
 				'label'   => __( 'Type', 'neximan-builder' ),
 				'type'    => Controls_Manager::SELECT,
@@ -442,53 +401,131 @@ class Builder_Widget extends Widget_Base {
 			)
 		);
 
-		$repeater->add_control(
-			'module_base_price',
+		$this->add_control(
+			'layouts',
 			array(
-				'label'   => __( 'Base Price', 'neximan-builder' ),
-				'type'    => Controls_Manager::NUMBER,
-				'default' => 0,
-				'min'     => 0,
-				'step'    => 1,
+				'type'        => Controls_Manager::REPEATER,
+				'fields'      => $repeater->get_controls(),
+				'title_field' => '{{{ layout_label }}}',
+				'default'     => array(
+					array(
+						'layout_label'    => __( '۲ نفره', 'neximan-builder' ),
+						'layout_price'    => 5000000,
+						'layout_has_size' => 'yes',
+						'layout_type'     => 'sofa',
+					),
+					array(
+						'layout_label'    => __( '۳ نفره', 'neximan-builder' ),
+						'layout_price'    => 7500000,
+						'layout_has_size' => 'yes',
+						'layout_type'     => 'sofa',
+					),
+					array(
+						'layout_label'    => __( '۴ نفره', 'neximan-builder' ),
+						'layout_price'    => 10000000,
+						'layout_has_size' => 'yes',
+						'layout_type'     => 'sofa',
+					),
+					array(
+						'layout_label'    => __( 'L شکل', 'neximan-builder' ),
+						'layout_price'    => 12000000,
+						'layout_has_size' => 'yes',
+						'layout_type'     => 'sofa',
+					),
+					array(
+						'layout_label'    => __( 'میز عسلی', 'neximan-builder' ),
+						'layout_price'    => 1500000,
+						'layout_has_size' => '',
+						'layout_type'     => 'table',
+					),
+				),
+			)
+		);
+
+		$this->end_controls_section();
+	}
+
+	/**
+	 * Inline seat-size controls (the 60 / 85 buttons and their price effect).
+	 *
+	 * @return void
+	 */
+	private function register_module_controls() {
+		$this->start_controls_section(
+			'section_sizes',
+			array(
+				'label'     => __( 'Seat Sizes', 'neximan-builder' ),
+				'tab'       => Controls_Manager::TAB_CONTENT,
+				'condition' => array( 'data_source' => 'inline' ),
+			)
+		);
+
+		$this->add_control(
+			'size_section_label',
+			array(
+				'label'   => __( 'Size Section Label', 'neximan-builder' ),
+				'type'    => Controls_Manager::TEXT,
+				'default' => __( 'سایز', 'neximan-builder' ),
+			)
+		);
+
+		$repeater = new Repeater();
+
+		$repeater->add_control(
+			'size_name',
+			array(
+				'label'       => __( 'Size Label', 'neximan-builder' ),
+				'type'        => Controls_Manager::TEXT,
+				'label_block' => true,
 			)
 		);
 
 		$repeater->add_control(
-			'module_woo_id',
+			'size_price',
 			array(
-				'label'       => __( 'WooCommerce Product ID', 'neximan-builder' ),
+				'label'       => __( 'Price Modifier', 'neximan-builder' ),
 				'type'        => Controls_Manager::NUMBER,
-				'description' => __( 'Optional per-model product. Falls back to the WooCommerce section product.', 'neximan-builder' ),
+				'description' => __( 'Added to the arrangement price when this size is selected.', 'neximan-builder' ),
+				'default'     => 0,
 				'min'         => 0,
 				'step'        => 1,
 			)
 		);
 
-		for ( $slot = 1; $slot <= self::MAX_SLOTS; $slot++ ) {
-			$repeater->add_control(
-				'module_image_' . $slot,
-				array(
-					/* translators: %d: slot number */
-					'label'   => sprintf( __( 'Layout Image (Slot %d)', 'neximan-builder' ), $slot ),
-					'type'    => Controls_Manager::MEDIA,
-					'default' => array( 'url' => '' ),
-				)
-			);
-		}
+		$repeater->add_control(
+			'size_var',
+			array(
+				'label'       => __( 'Variation Value', 'neximan-builder' ),
+				'type'        => Controls_Manager::TEXT,
+				'description' => __( 'Optional WooCommerce attribute value (slug) for variation matching.', 'neximan-builder' ),
+			)
+		);
 
 		$this->add_control(
-			'modules',
+			'sizes',
 			array(
 				'type'        => Controls_Manager::REPEATER,
 				'fields'      => $repeater->get_controls(),
-				'title_field' => '{{{ module_name }}}',
+				'title_field' => '{{{ size_name }}}',
 				'default'     => array(
 					array(
-						'module_name'       => __( 'مدل ۱', 'neximan-builder' ),
-						'module_type'       => 'sofa',
-						'module_base_price' => 0,
+						'size_name'  => __( '۶۰ سانت', 'neximan-builder' ),
+						'size_price' => 0,
+					),
+					array(
+						'size_name'  => __( '۸۵ سانت', 'neximan-builder' ),
+						'size_price' => 700000,
 					),
 				),
+			)
+		);
+
+		$this->add_control(
+			'size_var_attr',
+			array(
+				'label'       => __( 'Variation Attribute (size)', 'neximan-builder' ),
+				'type'        => Controls_Manager::TEXT,
+				'description' => __( 'Optional. WooCommerce attribute name, e.g. pa_size.', 'neximan-builder' ),
 			)
 		);
 
@@ -565,87 +602,6 @@ class Builder_Widget extends Widget_Base {
 						'color_name'  => __( 'عسلی', 'neximan-builder' ),
 					),
 				),
-			)
-		);
-
-		$this->end_controls_section();
-	}
-
-	/**
-	 * Inline option groups (e.g. Size 75/90 cm). One group in inline mode; use
-	 * Builder Posts for unlimited groups.
-	 *
-	 * @return void
-	 */
-	private function register_options_controls() {
-		$this->start_controls_section(
-			'section_options',
-			array(
-				'label'     => __( 'Size / Options', 'neximan-builder' ),
-				'tab'       => Controls_Manager::TAB_CONTENT,
-				'condition' => array( 'data_source' => 'inline' ),
-			)
-		);
-
-		$this->add_control(
-			'size_group_label',
-			array(
-				'label'   => __( 'Group Label', 'neximan-builder' ),
-				'type'    => Controls_Manager::TEXT,
-				'default' => __( 'سایز', 'neximan-builder' ),
-			)
-		);
-
-		$repeater = new Repeater();
-
-		$repeater->add_control(
-			'choice_name',
-			array(
-				'label'       => __( 'Choice', 'neximan-builder' ),
-				'type'        => Controls_Manager::TEXT,
-				'label_block' => true,
-			)
-		);
-
-		$repeater->add_control(
-			'choice_price',
-			array(
-				'label'   => __( 'Price Modifier', 'neximan-builder' ),
-				'type'    => Controls_Manager::NUMBER,
-				'default' => 0,
-				'min'     => 0,
-				'step'    => 1,
-			)
-		);
-
-		$repeater->add_control(
-			'choice_var',
-			array(
-				'label'       => __( 'Variation Value', 'neximan-builder' ),
-				'type'        => Controls_Manager::TEXT,
-				'description' => __( 'Optional. The WooCommerce attribute value (slug) for variation matching.', 'neximan-builder' ),
-			)
-		);
-
-		$this->add_control(
-			'sizes',
-			array(
-				'type'        => Controls_Manager::REPEATER,
-				'fields'      => $repeater->get_controls(),
-				'title_field' => '{{{ choice_name }}}',
-				'default'     => array(
-					array( 'choice_name' => __( '۶۰ سانت', 'neximan-builder' ) ),
-					array( 'choice_name' => __( '۸۵ سانت', 'neximan-builder' ) ),
-				),
-			)
-		);
-
-		$this->add_control(
-			'size_var_attr',
-			array(
-				'label'       => __( 'Variation Attribute (size)', 'neximan-builder' ),
-				'type'        => Controls_Manager::TEXT,
-				'description' => __( 'Optional. WooCommerce attribute name, e.g. pa_size. Used when Price Mode is Variation.', 'neximan-builder' ),
 			)
 		);
 
@@ -847,50 +803,37 @@ class Builder_Widget extends Widget_Base {
 	 * @return array Series array.
 	 */
 	private static function build_inline_series( array $settings ) {
-		// Map slot -> layout meta.
-		$slot_layouts = array();
+		// Each arrangement becomes a layout under a single model.
+		$layouts   = array();
+		$any_size  = false;
+
 		if ( ! empty( $settings['layouts'] ) && is_array( $settings['layouts'] ) ) {
 			foreach ( $settings['layouts'] as $index => $layout ) {
-				$slot = isset( $layout['layout_slot'] ) ? (int) $layout['layout_slot'] : ( $index + 1 );
-
-				$slot_layouts[ $slot ] = array(
-					'id'    => 'l' . $index,
-					'label' => isset( $layout['layout_label'] ) ? $layout['layout_label'] : '',
-					'price' => isset( $layout['layout_price'] ) ? (float) $layout['layout_price'] : 0,
-				);
-			}
-		}
-
-		// Models -> layouts (only slots that have an image).
-		$models = array();
-		if ( ! empty( $settings['modules'] ) && is_array( $settings['modules'] ) ) {
-			foreach ( $settings['modules'] as $mindex => $module ) {
-				$layouts = array();
-
-				foreach ( $slot_layouts as $slot => $meta ) {
-					$field = 'module_image_' . $slot;
-					if ( empty( $module[ $field ]['url'] ) ) {
-						continue;
-					}
-
-					$layouts[] = array(
-						'id'    => $meta['id'],
-						'label' => $meta['label'],
-						'image' => esc_url_raw( $module[ $field ]['url'] ),
-						'price' => $meta['price'],
-					);
+				$has_size = ( isset( $layout['layout_has_size'] ) && 'yes' === $layout['layout_has_size'] );
+				if ( $has_size ) {
+					$any_size = true;
 				}
 
-				$models[] = array(
-					'id'        => 'm' . $mindex,
-					'name'      => isset( $module['module_name'] ) ? $module['module_name'] : '',
-					'type'      => isset( $module['module_type'] ) ? $module['module_type'] : 'custom',
-					'basePrice' => isset( $module['module_base_price'] ) ? (float) $module['module_base_price'] : 0,
-					'wooId'     => isset( $module['module_woo_id'] ) ? (int) $module['module_woo_id'] : 0,
-					'layouts'   => $layouts,
+				$layouts[] = array(
+					'id'      => 'l' . $index,
+					'label'   => isset( $layout['layout_label'] ) ? $layout['layout_label'] : '',
+					'image'   => ! empty( $layout['layout_image']['url'] ) ? esc_url_raw( $layout['layout_image']['url'] ) : '',
+					'price'   => isset( $layout['layout_price'] ) ? (float) $layout['layout_price'] : 0,
+					'hasSize' => $has_size,
+					'type'    => isset( $layout['layout_type'] ) ? $layout['layout_type'] : 'sofa',
+					'parts'   => array(),
 				);
 			}
 		}
+
+		$model = array(
+			'id'        => 'm0',
+			'name'      => isset( $settings['title_text'] ) ? $settings['title_text'] : '',
+			'type'      => 'sofa',
+			'basePrice' => 0,
+			'wooId'     => 0,
+			'layouts'   => $layouts,
+		);
 
 		// Colors.
 		$colors = array();
@@ -906,46 +849,48 @@ class Builder_Widget extends Widget_Base {
 			}
 		}
 
-		// Option groups (inline: a single "size" group).
+		// Seat sizes become an option group (only shown for size-enabled layouts).
 		$options = array();
-		if ( ! empty( $settings['sizes'] ) && is_array( $settings['sizes'] ) ) {
+		if ( $any_size && ! empty( $settings['sizes'] ) && is_array( $settings['sizes'] ) ) {
 			$choices = array();
 			foreach ( $settings['sizes'] as $sindex => $size ) {
-				if ( empty( $size['choice_name'] ) ) {
+				if ( empty( $size['size_name'] ) ) {
 					continue;
 				}
 				$choices[] = array(
 					'id'       => 'o' . $sindex,
-					'name'     => $size['choice_name'],
-					'price'    => isset( $size['choice_price'] ) ? (float) $size['choice_price'] : 0,
-					'varValue' => isset( $size['choice_var'] ) ? $size['choice_var'] : '',
+					'name'     => $size['size_name'],
+					'price'    => isset( $size['size_price'] ) ? (float) $size['size_price'] : 0,
+					'varValue' => isset( $size['size_var'] ) ? $size['size_var'] : '',
 				);
 			}
 
 			if ( ! empty( $choices ) ) {
 				$options[] = array(
-					'id'      => 'gsize',
-					'label'   => isset( $settings['size_group_label'] ) ? $settings['size_group_label'] : '',
-					'varAttr' => isset( $settings['size_var_attr'] ) ? $settings['size_var_attr'] : '',
-					'choices' => $choices,
+					'id'       => 'gsize',
+					'label'    => isset( $settings['size_section_label'] ) ? $settings['size_section_label'] : '',
+					'varAttr'  => isset( $settings['size_var_attr'] ) ? $settings['size_var_attr'] : '',
+					'choices'  => $choices,
+					'layoutsWithSize' => true,
 				);
 			}
 		}
 
 		return array(
-			'id'        => 'inline',
-			'postId'    => 0,
-			'name'      => '',
-			'wooId'     => isset( $settings['woo_fallback_product'] ) ? (int) $settings['woo_fallback_product'] : 0,
-			'priceMode' => isset( $settings['woo_price_mode'] ) ? $settings['woo_price_mode'] : 'dynamic',
+			'id'          => 'inline',
+			'postId'      => 0,
+			'name'        => '',
+			'wooId'       => isset( $settings['woo_fallback_product'] ) ? (int) $settings['woo_fallback_product'] : 0,
+			'priceMode'   => isset( $settings['woo_price_mode'] ) ? $settings['woo_price_mode'] : 'dynamic',
 			'pricingMode' => 'simple',
-			'varAttrs'  => array(
+			'varAttrs'    => array(
 				'layout' => isset( $settings['var_attr_layout'] ) ? $settings['var_attr_layout'] : '',
 				'color'  => isset( $settings['var_attr_color'] ) ? $settings['var_attr_color'] : '',
 			),
-			'models'    => $models,
-			'colors'    => $colors,
-			'options'   => $options,
+			'modules'     => array(),
+			'models'      => array( $model ),
+			'colors'      => $colors,
+			'options'     => $options,
 		);
 	}
 

@@ -186,12 +186,30 @@
 				total += parseFloat( color.price ) || 0;
 			}
 			( activeSeries().options || [] ).forEach( function ( group ) {
+				if ( ! groupAppliesToActiveLayout( group ) ) {
+					return;
+				}
 				var choice = byId( group.choices, state.options[ group.id ] );
 				if ( choice ) {
 					total += parseFloat( choice.price ) || 0;
 				}
 			} );
 			return total;
+		}
+
+		/**
+		 * Whether an option group applies to the currently active layout.
+		 * Size groups (layoutsWithSize) only apply to layouts flagged hasSize.
+		 *
+		 * @param {Object} group Option group.
+		 * @return {boolean} True when the group should be shown/counted.
+		 */
+		function groupAppliesToActiveLayout( group ) {
+			if ( ! group.layoutsWithSize ) {
+				return true;
+			}
+			var layout = activeLayout();
+			return !! ( layout && layout.hasSize );
 		}
 
 		/**
@@ -329,6 +347,7 @@
 				} );
 			}
 			renderParts();
+			renderOptions();
 			renderPreview();
 		}
 
@@ -432,6 +451,9 @@
 
 			groups.forEach( function ( group ) {
 				if ( ! group.choices || ! group.choices.length ) {
+					return;
+				}
+				if ( ! groupAppliesToActiveLayout( group ) ) {
 					return;
 				}
 
@@ -610,6 +632,10 @@
 			body.append( 'layout', state.layoutId );
 			body.append( 'color', state.colorId );
 			Object.keys( state.options ).forEach( function ( groupId ) {
+				var group = byId( activeSeries().options, groupId );
+				if ( group && ! groupAppliesToActiveLayout( group ) ) {
+					return;
+				}
 				body.append( 'options[' + groupId + ']', state.options[ groupId ] );
 			} );
 			Object.keys( state.partSel ).forEach( function ( partId ) {
