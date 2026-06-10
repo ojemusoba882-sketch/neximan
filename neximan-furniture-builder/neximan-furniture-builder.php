@@ -151,10 +151,40 @@ function neximan_builder_activate() {
 				'basePrice' => 0,
 				'wooId'     => 0,
 				'layouts'   => array(
-					// 2-seater: two middle seats, each selectable 60/85.
+					// تک نفره: one seat, selectable 60/85.
+					array(
+						'id'    => 'l1',
+						'label' => 'تک نفره',
+						'image' => '',
+						'price' => 0,
+						'parts' => array(
+							array(
+								'id'        => 'l1p1',
+								'label'     => 'سایز نشیمن',
+								'qty'       => 1,
+								'moduleIds' => array( 'seat60', 'seat85' ),
+							),
+						),
+					),
+					// تک نفره کنج: a single corner module.
+					array(
+						'id'    => 'lcorner',
+						'label' => 'تک نفره کنج',
+						'image' => '',
+						'price' => 0,
+						'parts' => array(
+							array(
+								'id'        => 'lcp1',
+								'label'     => 'کنج',
+								'qty'       => 1,
+								'moduleIds' => array( 'corner' ),
+							),
+						),
+					),
+					// دو نفره.
 					array(
 						'id'    => 'l2',
-						'label' => '۲ نفره',
+						'label' => 'دو نفره',
 						'image' => '',
 						'price' => 0,
 						'parts' => array(
@@ -166,10 +196,31 @@ function neximan_builder_activate() {
 							),
 						),
 					),
-					// 3-seater: three middle seats, selectable 60/85.
+					// دو نفره با پاف.
+					array(
+						'id'    => 'l2p',
+						'label' => 'دو نفره با پاف',
+						'image' => '',
+						'price' => 0,
+						'parts' => array(
+							array(
+								'id'        => 'l2pp1',
+								'label'     => 'سایز نشیمن',
+								'qty'       => 2,
+								'moduleIds' => array( 'seat60', 'seat85' ),
+							),
+							array(
+								'id'        => 'l2pp2',
+								'label'     => 'پاف',
+								'qty'       => 1,
+								'moduleIds' => array( 'pouf60', 'pouf85' ),
+							),
+						),
+					),
+					// سه نفره (size selector covers کوتاه/بلند).
 					array(
 						'id'    => 'l3',
-						'label' => '۳ نفره',
+						'label' => 'سه نفره',
 						'image' => '',
 						'price' => 0,
 						'parts' => array(
@@ -181,10 +232,31 @@ function neximan_builder_activate() {
 							),
 						),
 					),
-					// 4-seater.
+					// سه نفره با پاف.
+					array(
+						'id'    => 'l3p',
+						'label' => 'سه نفره با پاف',
+						'image' => '',
+						'price' => 0,
+						'parts' => array(
+							array(
+								'id'        => 'l3pp1',
+								'label'     => 'سایز نشیمن',
+								'qty'       => 3,
+								'moduleIds' => array( 'seat60', 'seat85' ),
+							),
+							array(
+								'id'        => 'l3pp2',
+								'label'     => 'پاف',
+								'qty'       => 1,
+								'moduleIds' => array( 'pouf60', 'pouf85' ),
+							),
+						),
+					),
+					// چهار نفره.
 					array(
 						'id'    => 'l4',
-						'label' => '۴ نفره',
+						'label' => 'چهار نفره',
 						'image' => '',
 						'price' => 0,
 						'parts' => array(
@@ -196,7 +268,22 @@ function neximan_builder_activate() {
 							),
 						),
 					),
-					// L-shape / corner: one fixed corner + two selectable seats.
+					// پنج نفره.
+					array(
+						'id'    => 'l5',
+						'label' => 'پنج نفره',
+						'image' => '',
+						'price' => 0,
+						'parts' => array(
+							array(
+								'id'        => 'l5p1',
+								'label'     => 'سایز نشیمن',
+								'qty'       => 5,
+								'moduleIds' => array( 'seat60', 'seat85' ),
+							),
+						),
+					),
+					// L / کنج: one corner + selectable seats.
 					array(
 						'id'    => 'll',
 						'label' => 'L / کنج',

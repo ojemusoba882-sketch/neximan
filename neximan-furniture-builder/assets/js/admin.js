@@ -64,11 +64,15 @@
 	function moduleRow( module ) {
 		module = module || {};
 		var id = module.id || uid( 'mod' );
+		var image = module.image || '';
 
 		return $(
-			'<div class="neximan-row neximan-module-row" data-id="' + attr( id ) + '">' +
+			'<div class="neximan-row neximan-module-row" data-id="' + attr( id ) + '" data-image-id="' + attr( module.imageId || 0 ) + '">' +
+				'<span class="nx-thumb" style="' + ( image ? 'background-image:url(\'' + attr( image ) + '\')' : '' ) + '"></span>' +
 				'<input type="text" class="nx-module-name" placeholder="Seat 60 / Corner / ..." value="' + attr( module.name || '' ) + '" />' +
 				'<input type="number" class="nx-module-price" step="1" min="0" placeholder="price" value="' + attr( module.price || 0 ) + '" />' +
+				'<input type="hidden" class="nx-module-image" value="' + attr( image ) + '" />' +
+				'<button type="button" class="button nx-pick-mod-image">' + ( i18n.selectImage || 'Image' ) + '</button>' +
 				'<button type="button" class="button-link nx-remove" title="x">&times;</button>' +
 			'</div>'
 		);
@@ -347,7 +351,9 @@
 			data.modules.push( {
 				id: $r.data( 'id' ),
 				name: $r.find( '.nx-module-name' ).val(),
-				price: parseFloat( $r.find( '.nx-module-price' ).val() ) || 0
+				price: parseFloat( $r.find( '.nx-module-price' ).val() ) || 0,
+				image: $r.find( '.nx-module-image' ).val() || '',
+				imageId: parseInt( $r.attr( 'data-image-id' ), 10 ) || 0
 			} );
 		} );
 
@@ -552,8 +558,27 @@
 		frame.open();
 	} );
 
-	// Keep JSON current before submit.
-	$( 'form#post' ).on( 'submit', serialize );
+	// Media uploader for module images.
+	var modFrame = null;
+	$modules.on( 'click', '.nx-pick-mod-image', function () {
+		var $row = $( this ).closest( '.neximan-module-row' );
+
+		modFrame = wp.media( {
+			title: i18n.selectImage || 'Select Image',
+			button: { text: i18n.useImage || 'Use this image' },
+			multiple: false
+		} );
+
+		modFrame.on( 'select', function () {
+			var attachment = modFrame.state().get( 'selection' ).first().toJSON();
+			$row.find( '.nx-module-image' ).val( attachment.url );
+			$row.attr( 'data-image-id', attachment.id );
+			$row.find( '.nx-thumb' ).css( 'background-image', "url('" + attachment.url + "')" );
+			serialize();
+		} );
+
+		modFrame.open();
+	} );
 
 	serialize();
 } )( jQuery );

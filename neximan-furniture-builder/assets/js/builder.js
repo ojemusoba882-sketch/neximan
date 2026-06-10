@@ -102,8 +102,7 @@
 		var signature = root.getAttribute( 'data-sig' ) || '';
 
 		var els = {
-			image: root.querySelector( '.neximan-main-image' ),
-			display: root.querySelector( '.neximan-sofa-display' ),
+			assembly: root.querySelector( '.neximan-assembly' ),
 			seriesTabs: root.querySelector( '.neximan-series-tabs' ),
 			modelTabs: root.querySelector( '.neximan-model-tabs' ),
 			layouts: root.querySelector( '.neximan-layout-options' ),
@@ -219,14 +218,10 @@
 			var model = activeModel();
 			var layout = model ? byId( model.layouts, state.layoutId ) : null;
 			var color = byId( activeSeries().colors, state.colorId );
+			var colorVal = color ? color.value : '';
 
-			if ( layout && layout.image && els.image && els.display ) {
-				els.image.src = layout.image;
-				els.display.style.setProperty( '--nx-bg-image', 'url("' + layout.image + '")' );
-			}
-			if ( color && els.display ) {
-				els.display.style.setProperty( '--nx-sofa-color', color.value );
-			}
+			renderAssembly( layout, colorVal );
+
 			if ( els.infoLayout ) {
 				els.infoLayout.textContent = layout ? layout.label : '';
 			}
@@ -236,6 +231,56 @@
 			if ( config.showPrice && els.priceValue ) {
 				els.priceValue.textContent = formatPrice( calcPrice(), config.currency );
 			}
+		}
+
+		/**
+		 * Renders the visual assembly. In modular mode each composition part's
+		 * selected module image is placed side by side (repeated by qty); in
+		 * simple mode (or when modules have no image) the layout image is shown.
+		 * Each piece is tinted with the selected fabric color via a CSS mask.
+		 *
+		 * @param {Object} layout   Active layout.
+		 * @param {string} colorVal Fabric color value.
+		 * @return {void}
+		 */
+		function renderAssembly( layout, colorVal ) {
+			if ( ! els.assembly ) {
+				return;
+			}
+			els.assembly.innerHTML = '';
+
+			var urls = [];
+			var modular = activeSeries().pricingMode !== 'simple';
+
+			if ( modular && layout && layout.parts && layout.parts.length ) {
+				layout.parts.forEach( function ( part ) {
+					var mod = moduleById( selectedModuleForPart( part ) );
+					var qty = parseInt( part.qty, 10 ) || 1;
+					for ( var i = 0; i < qty; i++ ) {
+						if ( mod && mod.image ) {
+							urls.push( mod.image );
+						}
+					}
+				} );
+			}
+
+			if ( ! urls.length && layout && layout.image ) {
+				urls = [ layout.image ];
+			}
+
+			urls.forEach( function ( url ) {
+				var piece = document.createElement( 'div' );
+				piece.className = 'neximan-piece' + ( colorVal ? ' is-tinted' : '' );
+				piece.style.setProperty( '--nx-bg-image', 'url("' + url + '")' );
+				if ( colorVal ) {
+					piece.style.setProperty( '--nx-sofa-color', colorVal );
+				}
+				var img = document.createElement( 'img' );
+				img.src = url;
+				img.alt = '';
+				piece.appendChild( img );
+				els.assembly.appendChild( piece );
+			} );
 		}
 
 		/**

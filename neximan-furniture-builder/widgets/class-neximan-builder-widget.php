@@ -1047,9 +1047,7 @@ class Builder_Widget extends Widget_Base {
 
 					<div class="neximan-preview-area">
 						<div class="neximan-stage">
-							<div class="neximan-sofa-display">
-								<img class="neximan-main-image" src="" alt="<?php esc_attr_e( 'Preview', 'neximan-builder' ); ?>" />
-							</div>
+							<div class="neximan-assembly"></div>
 						</div>
 						<div class="neximan-config-info">
 							<strong class="neximan-info-layout"></strong>
