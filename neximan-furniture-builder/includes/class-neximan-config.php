@@ -66,7 +66,48 @@ class Config {
 			return self::defaults();
 		}
 
+		// Repair any previously-corrupted unicode (e.g. "u0646u0634" that lost its
+		// backslashes and rendered as garbled text).
+		$data = self::repair_unicode( $data );
+
 		return wp_parse_args( $data, self::defaults() );
+	}
+
+	/**
+	 * Recursively repairs strings whose \uXXXX escapes lost their backslashes
+	 * (so "نشیمن" was stored/displayed as "u0646u0634u06ccu0645u0646").
+	 *
+	 * @param mixed $value Value to repair.
+	 * @return mixed
+	 */
+	public static function repair_unicode( $value ) {
+		if ( is_array( $value ) ) {
+			$out = array();
+			foreach ( $value as $k => $v ) {
+				$out[ $k ] = self::repair_unicode( $v );
+			}
+			return $out;
+		}
+
+		if ( ! is_string( $value ) || '' === $value ) {
+			return $value;
+		}
+
+		// Only touch strings that contain runs of bare uXXXX tokens.
+		if ( ! preg_match( '/(?:u[0-9a-fA-F]{4})+/', $value ) ) {
+			return $value;
+		}
+
+		return preg_replace_callback(
+			'/(?:u[0-9a-fA-F]{4})+/',
+			function ( $matches ) {
+				// Re-insert the backslashes and let json_decode turn it back to UTF-8.
+				$escaped = preg_replace( '/u([0-9a-fA-F]{4})/', '\\\\u$1', $matches[0] );
+				$decoded = json_decode( '"' . $escaped . '"' );
+				return ( null === $decoded ) ? $matches[0] : $decoded;
+			},
+			$value
+		);
 	}
 
 	/**
